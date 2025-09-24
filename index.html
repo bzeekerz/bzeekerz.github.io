@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Service Quality Mock Survey</title>
+<style>
+  :root{
+    --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#64748b;
+    --line:#e5e7eb; --brand:#6f4cff;
+  }
+  body{margin:0; font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text);}
+  .wrap{max-width:980px; margin:auto; padding:16px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.05); padding:18px;}
+  h1{font-size:20px; margin:0 0 8px}
+  p.desc{color:var(--muted); margin:0 0 20px}
+  .q{border:1px solid var(--line); border-radius:12px; padding:14px; margin:12px 0; background:#fff}
+  .q h2{font-size:16px; margin:0 0 10px; line-height:1.35}
+  .grid{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
+  @media (max-width:780px){ .grid{grid-template-columns:1fr} }
+  fieldset{border:1px solid var(--line); border-radius:10px; padding:10px}
+  legend{padding:0 6px; color:#111; font-weight:600; font-size:13px}
+  .scale{display:flex; gap:8px; justify-content:space-between; align-items:center; flex-wrap:wrap}
+  .scale label{display:flex; gap:6px; align-items:center; padding:6px 8px; border:1px solid var(--line); border-radius:10px; min-width:44px; justify-content:center; user-select:none}
+  .scale input[type="radio"]{accent-color:var(--brand)}
+  .disabled{opacity:.45; pointer-events:none; filter:grayscale(.4)}
+  .inline{display:flex; align-items:center; gap:10px; margin:6px 0 0}
+  textarea{width:100%; min-height:70px; resize:vertical; padding:8px 10px; border:1px solid var(--line); border-radius:10px}
+  .muted{color:var(--muted); font-size:12px}
+  .req{color:#ef4444}
+  .footer{margin-top:16px; display:flex; gap:8px; flex-wrap:wrap}
+  button{border:0; background:var(--brand); color:#fff; padding:10px 14px; border-radius:10px; font-weight:600}
+  .note{font-size:12px; color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Service Quality Mock Survey</h1>
+      <p class="desc">Please rate your <b>Expectation</b> and your <b>Satisfaction</b> (1 = lowest, 5 = highest). If you mark <b>Not satisfied</b>, the Satisfaction scale will be disabled and we’ll ask for details.</p>
+
+      <!-- Questions container -->
+      <form id="survey" novalidate></form>
+
+      <div class="footer">
+        <button type="submit" form="survey">Submit</button>
+        <span class="note">This is a mockup form.</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ------- Config: 5 mock questions ------- */
+const QUESTIONS = [
+  "Clarity of instructions",
+  "Ease of booking process",
+  "Response time from staff",
+  "Cleanliness of facility",
+  "Overall experience"
+];
+
+/* ------- Helpers ------- */
+const makeScale = (namePrefix, legendText) => {
+  const fs = document.createElement('fieldset');
+  const lg = document.createElement('legend'); lg.textContent = legendText; fs.appendChild(lg);
+  const row = document.createElement('div'); row.className = 'scale';
+  for (let i=1;i<=5;i++){
+    const id = `${namePrefix}_${i}`;
+    const lab = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'radio'; input.name = namePrefix; input.id = id; input.value = String(i);
+    lab.htmlFor = id; lab.appendChild(input); lab.appendChild(document.createTextNode(i));
+    row.appendChild(lab);
+  }
+  fs.appendChild(row);
+  return fs;
+};
+
+const makeQuestion = (idx, text) => {
+  const q = document.createElement('section'); q.className = 'q'; q.dataset.idx = idx;
+
+  const h = document.createElement('h2'); h.textContent = `Q${idx+1}. ${text}`; q.appendChild(h);
+
+  const grid = document.createElement('div'); grid.className = 'grid';
+  // Expectation scale
+  const exp = makeScale(`q${idx}_exp`, 'Expectation (1–5)');
+  grid.appendChild(exp);
+
+  // Satisfaction scale (can be disabled)
+  const sat = makeScale(`q${idx}_sat`, 'Satisfaction (1–5)');
+  sat.classList.add('sat');
+  grid.appendChild(sat);
+
+  q.appendChild(grid);
+
+  // Not satisfied toggle
+  const toggle = document.createElement('div'); toggle.className = 'inline';
+  const cb = document.createElement('input'); cb.type='checkbox'; cb.id=`q${idx}_ns`;
+  const lb = document.createElement('label'); lb.htmlFor = cb.id; lb.textContent = 'Not satisfied';
+  toggle.append(cb, lb);
+  q.appendChild(toggle);
+
+  // If not satisfied: follow-ups
+  const nswrap = document.createElement('div'); nswrap.className='nswrap';
+  const nsScale = makeScale(`q${idx}_ns_scale`, "If you're not satisfied (1–5)");
+  const reason = document.createElement('div');
+  reason.innerHTML = `<label class="muted" for="q${idx}_reason">Reason <span class="req">*</span></label>
+                      <textarea id="q${idx}_reason" name="q${idx}_reason" disabled placeholder="Tell us briefly…"></textarea>`;
+  nswrap.append(nsScale, reason);
+  q.appendChild(nswrap);
+
+  // Initial disabled state for the NS section
+  nsEnable(false, q);
+
+  // Behavior: checking "Not satisfied" disables Satisfaction scale, enables NS section
+  cb.addEventListener('change', () => {
+    const satFS = q.querySelector('.sat');
+    if (cb.checked){
+      // clear & disable Satisfaction
+      satFS.querySelectorAll('input[type="radio"]').forEach(r=>{ r.checked=false; r.disabled=true; });
+      satFS.classList.add('disabled');
+      nsEnable(true, q);
+    }else{
+      satFS.querySelectorAll('input[type="radio"]').forEach(r=> r.disabled=false);
+      satFS.classList.remove('disabled');
+      nsEnable(false, q);
+    }
+  });
+
+  return q;
+};
+
+function nsEnable(on, scope){
+  // Enable/disable the "If you're not satisfied" follow-ups
+  const nsFieldset = scope.querySelector('.nswrap fieldset');
+  const textarea = scope.querySelector('textarea');
+  nsFieldset.classList.toggle('disabled', !on);
+  nsFieldset.querySelectorAll('input[type="radio"]').forEach(r=>{
+    r.disabled = !on;
+    if(!on) r.checked = false;
+  });
+  textarea.disabled = !on;
+  if(!on) textarea.value = '';
+}
+
+/* ------- Render form ------- */
+const form = document.getElementById('survey');
+QUESTIONS.forEach((qText, i) => form.appendChild(makeQuestion(i, qText)));
+
+/* ------- Optional client-side check on submit ------- */
+form.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  // Example: enforce reason if "Not satisfied" chosen anywhere
+  const problems = [];
+  form.querySelectorAll('.q').forEach(q=>{
+    const checkedNS = q.querySelector('.inline input[type="checkbox"]').checked;
+    if (checkedNS){
+      const txt = q.querySelector('textarea');
+      if (!txt.value.trim()) problems.push(q.dataset.idx);
+    }
+  });
+  if (problems.length){
+    alert('Please provide a reason for each question where you selected "Not satisfied".');
+    return;
+  }
+  alert('Submitted! (Mock)');
+});
+</script>
+</body>
+</html>
