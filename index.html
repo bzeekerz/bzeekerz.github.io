@@ -1,170 +1,527 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="th">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Service Quality Mock Survey</title>
-<style>
-  :root{
-    --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#64748b;
-    --line:#e5e7eb; --brand:#6f4cff;
-  }
-  body{margin:0; font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text);}
-  .wrap{max-width:980px; margin:auto; padding:16px;}
-  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.05); padding:18px;}
-  h1{font-size:20px; margin:0 0 8px}
-  p.desc{color:var(--muted); margin:0 0 20px}
-  .q{border:1px solid var(--line); border-radius:12px; padding:14px; margin:12px 0; background:#fff}
-  .q h2{font-size:16px; margin:0 0 10px; line-height:1.35}
-  .grid{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
-  @media (max-width:780px){ .grid{grid-template-columns:1fr} }
-  fieldset{border:1px solid var(--line); border-radius:10px; padding:10px}
-  legend{padding:0 6px; color:#111; font-weight:600; font-size:13px}
-  .scale{display:flex; gap:8px; justify-content:space-between; align-items:center; flex-wrap:wrap}
-  .scale label{display:flex; gap:6px; align-items:center; padding:6px 8px; border:1px solid var(--line); border-radius:10px; min-width:44px; justify-content:center; user-select:none}
-  .scale input[type="radio"]{accent-color:var(--brand)}
-  .disabled{opacity:.45; pointer-events:none; filter:grayscale(.4)}
-  .inline{display:flex; align-items:center; gap:10px; margin:6px 0 0}
-  textarea{width:100%; min-height:70px; resize:vertical; padding:8px 10px; border:1px solid var(--line); border-radius:10px}
-  .muted{color:var(--muted); font-size:12px}
-  .req{color:#ef4444}
-  .footer{margin-top:16px; display:flex; gap:8px; flex-wrap:wrap}
-  button{border:0; background:var(--brand); color:#fff; padding:10px 14px; border-radius:10px; font-weight:600}
-  .note{font-size:12px; color:var(--muted)}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JC Request Form</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <style>
+    body { background: #f0f2f5; font-family: 'Sarabun', sans-serif; }
+    .card { border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-radius: 12px; }
+    .hidden { display: none !important; }
+    .no-resize { resize: none !important; }
+    .char-count { font-size: 0.8rem; color: #6c757d; display: block; text-align: right; margin-top: 2px; }
+    .char-count.limit-reached { color: #dc3545; font-weight: bold; }
+    .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+    #sig-canvas { background: #fff; cursor: crosshair; touch-action: none; }
+    .history-item { position: relative; }
+    .action-btn { font-size: 0.8rem; cursor: pointer; margin-left: 5px; }
+  </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>Service Quality Mock Survey</h1>
-      <p class="desc">Please rate your <b>Expectation</b> and your <b>Satisfaction</b> (1 = lowest, 5 = highest). If you mark <b>Not satisfied</b>, the Satisfaction scale will be disabled and we’ll ask for details.</p>
 
-      <!-- Questions container -->
-      <form id="survey" novalidate></form>
+<div id="loading" class="loading-overlay hidden">
+  <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+</div>
 
-      <div class="footer">
-        <button type="submit" form="survey">Submit</button>
-        <span class="note">This is a mockup form.</span>
+<div class="container py-5">
+  <div id="server-alert" class="alert hidden text-center" role="alert"></div>
+
+  <div id="login-page" class="row justify-content-center">
+    <div class="col-md-5">
+      <div class="card p-4">
+        <h3 class="text-center mb-4">เข้าสู่ระบบ</h3>
+        <form id="loginForm">
+          <div class="mb-3"><input type="text" class="form-control" id="u_name" placeholder="Username" required></div>
+          <div class="mb-3"><input type="password" class="form-control" id="u_pass" placeholder="Password" required></div>
+          <button type="submit" class="btn btn-primary w-100">Login</button>
+        </form>
+        <div class="d-flex justify-content-between mt-3">
+          <a href="#" class="small text-decoration-none" onclick="showPage('forgot-page')">ลืมรหัสผ่าน?</a>
+          <a href="#" class="small text-decoration-none" onclick="showPage('register-page')">ลงทะเบียนใหม่</a>
+        </div>
       </div>
     </div>
   </div>
 
+  <div id="register-page" class="row justify-content-center hidden">
+    <div class="col-md-6">
+      <div class="card p-4">
+        <h3 class="text-center mb-4">ลงทะเบียน</h3>
+        <div class="alert alert-info small"><i class="bi bi-info-circle"></i> โปรดใช้อีเมลจริง เพื่อรับลิงก์ยืนยันตัวตน</div>
+        <form id="regForm">
+          <div class="row g-2">
+            <div class="col-md-6 mb-3"><label>Username</label><input type="text" name="reg_username" class="form-control" required></div>
+            <div class="col-md-6 mb-3"><label>Password</label><input type="password" name="reg_password" class="form-control" required></div>
+          </div>
+          <div class="mb-3"><label>ชื่อ-นามสกุล (ภาษาไทย)</label><input type="text" name="reg_name" class="form-control" data-limit="30" required></div>
+          
+          <div class="mb-3">
+            <label>เพศ</label>
+            <div class="mt-2">
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="reg_gender" value="male" required>
+                <label class="form-check-label">ชาย</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="reg_gender" value="female" required>
+                <label class="form-check-label">หญิง</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-8"><label>รหัสนักศึกษา</label><input type="tel" name="reg_std_id" class="form-control" data-limit="10" data-type="number" required></div>
+            <div class="col-md-4"><label>ชั้นปีที่</label><input type="tel" name="reg_year" class="form-control" data-limit="1" data-type="number" required></div>
+          </div>
+          <div class="row g-2 mb-3">
+             <div class="col-md-6"><label>เบอร์โทรศัพท์</label><input type="tel" name="reg_tel" class="form-control" data-limit="10" data-type="number" required></div>
+             <div class="col-md-6"><label>Email</label><input type="email" name="reg_email" class="form-control" data-limit="60" required></div>
+          </div>
+          <button type="submit" class="btn btn-success w-100">ยืนยันการสมัคร</button>
+          <div class="text-center mt-3"><a href="#" onclick="showPage('login-page')">กลับไป Login</a></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="forgot-page" class="row justify-content-center hidden">
+    <div class="col-md-5">
+      <div class="card p-4">
+        <h4 class="text-center mb-3">ลืมรหัสผ่าน</h4>
+        <form id="forgotForm">
+          <div class="mb-3"><input type="email" id="forgot_email" class="form-control" placeholder="อีเมลของคุณ" required></div>
+          <button type="submit" class="btn btn-warning w-100">ส่งลิงก์รีเซ็ต</button>
+          <div class="text-center mt-3"><a href="#" onclick="showPage('login-page')">กลับไป Login</a></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="reset-page" class="row justify-content-center hidden">
+    <div class="col-md-5">
+      <div class="card p-4">
+        <h4 class="text-center mb-3">ตั้งรหัสผ่านใหม่</h4>
+        <form id="resetForm">
+          <input type="hidden" id="reset_token">
+          <div class="mb-3"><label>รหัสผ่านใหม่</label><input type="password" id="new_reset_pass" class="form-control" required></div>
+          <div class="mb-3"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="confirm_reset_pass" class="form-control" required></div>
+          <button type="submit" class="btn btn-primary w-100">บันทึกรหัสผ่าน</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-page" class="hidden">
+    <nav class="navbar navbar-light bg-white rounded shadow-sm px-4 mb-4 d-flex justify-content-between align-items-center">
+      <div>
+        <span class="navbar-brand h1 m-0">สวัสดี, <span id="disp_name"></span></span>
+        <span id="disp_gender" class="badge bg-secondary ms-2 small"></span>
+      </div>
+      <div>
+        <button class="btn btn-outline-secondary btn-sm me-2" onclick="showChangePassModal()">เปลี่ยนรหัสผ่าน</button>
+        <button class="btn btn-outline-danger btn-sm" onclick="logout()">Logout</button>
+      </div>
+    </nav>
+    
+    <div id="change-pass-modal" class="card p-3 mb-4 border-warning hidden">
+      <h5>เปลี่ยนรหัสผ่าน</h5>
+      <form id="changePassForm">
+        <div class="row g-2">
+          <div class="col-md-4"><input type="password" name="old_pass" class="form-control form-control-sm" placeholder="รหัสเดิม" required></div>
+          <div class="col-md-4"><input type="password" name="new_pass" class="form-control form-control-sm" placeholder="รหัสใหม่" required></div>
+          <div class="col-md-4"><button type="submit" class="btn btn-warning btn-sm w-100">บันทึก</button></div>
+        </div>
+      </form>
+      <div class="text-end mt-2"><a href="#" class="small text-muted" onclick="document.getElementById('change-pass-modal').classList.add('hidden')">ปิด</a></div>
+    </div>
+
+    <div class="alert alert-secondary mb-3">
+      <label class="fw-bold small mb-1"><i class="bi bi-magic"></i> เลือกแบบฟอร์มอัตโนมัติ (Template)</label>
+      <select id="template_select" class="form-select" onchange="applyTemplate()">
+        <option value="">-- ไม่ใช้ Template --</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div class="col-md-8">
+        <div class="card p-4 mb-4">
+          <h4 class="mb-3">แบบฟอร์มคำร้อง</h4>
+          <form id="mainForm">
+            <div class="mb-3">
+              <label class="fw-bold text-primary">ตั้งชื่อไฟล์ PDF (ถ้าไม่ใส่ ระบบจะตั้งให้)</label>
+              <input type="text" name="custom_filename" class="form-control" placeholder="เช่น คำร้องขอสอบ_นาย ก.">
+            </div>
+            <hr>
+
+            <div class="row g-2 mb-3">
+               <div class="col-md-12">
+                 <label>หลักสูตร</label>
+                 <select name="program" class="form-select">
+                   <option value="Thai">ภาคปกติ (Thai)</option>
+                   <option value="BJM">โครงการพิเศษ (BJM)</option>
+                 </select>
+               </div>
+            </div>
+            
+            <div class="row g-2 mb-3">
+              <div class="col-md-4"><label>ชั้นปีที่</label><input type="tel" name="year" id="main_year" class="form-control" data-limit="1" data-type="number" required></div>
+              <div class="col-md-8"><label>เบอร์โทรศัพท์</label><input type="tel" name="tel" id="main_tel" class="form-control" data-limit="10" data-type="number" required></div>
+            </div>
+            
+            <div class="mb-3"><label>สาขาวิชาเอกปัจจุบัน</label><select name="major" id="major_main_dropdown" class="form-select" required></select></div>
+            <div class="mb-3"><label>อาจารย์ที่ปรึกษา</label><select name="advisor" id="advisor_dropdown" class="form-select"></select></div>
+            <div class="mb-3"><label>Email</label><input type="email" name="email" id="main_email" class="form-control" data-limit="60"></div>
+            <div class="mb-3"><label>ที่อยู่ปัจจุบัน</label><textarea name="address" class="form-control no-resize" rows="2" data-limit="95"></textarea></div>
+            <hr>
+            
+            <div class="mb-3"><label class="fw-bold">เรื่องที่ต้องการยื่นคำร้อง</label>
+              <select name="request_type" class="form-select" onchange="toggleFields(this.value)" required>
+                <option value="">-- เลือกหัวข้อ --</option>
+                <option value="t1">1. เลือกเรียนกลุ่มวิชา</option>
+                <option value="t2">2. ขอเปลี่ยนกลุ่มวิชา</option>
+                <option value="t3">3. ขอหนังสือรับรองความประพฤติ</option>
+                <option value="t4">4. ขออนุมัติย้ายคณะ</option>
+                <option value="t5">5. ขอลาออก</option>
+                <option value="t6">6. ขอคืนสภาพนักศึกษา</option>
+                <option value="t7">7. ขอใช้ห้องเรียน / สถานที่</option>
+                <option value="t8">8. ขออนุญาตใช้ห้อง</option>
+                <option value="t9">9. ขอยืมอุปกรณ์</option>
+                <option value="t10">10. อื่นๆ</option>
+              </select>
+            </div>
+            
+            <div id="dynamic-fields" class="bg-light p-3 rounded mb-3 border">
+              <p class="text-muted text-center m-0" id="empty-msg">กรุณาเลือกหัวข้อด้านบน</p>
+              
+              <div class="d-field hidden" data-topic="t1">
+                <label>วิชาเอกที่เลือกเรียน</label><select name="major_sel" class="form-select major-list"></select>
+              </div>
+              <div class="d-field hidden" data-topic="t2">
+                <label>ย้ายจากเอก</label><select name="major_from" class="form-select major-list mb-2"></select>
+                <label>ไปยังเอก</label><select name="major_to" class="form-select major-list"></select>
+              </div>
+              <div class="d-field hidden" data-topic="t3">
+                <label>เสนออาจารย์</label><select name="prof_rec" class="form-select teacher-list mb-2"></select>
+                <label>จำนวนฉบับ</label><input type="tel" name="r_no" class="form-control" data-limit="1" data-type="number">
+              </div>
+              <div class="d-field hidden" data-topic="t5">
+                <div class="row g-2">
+                   <div class="col-4"><label>เทอม</label><input name="reg_sem" class="form-control" data-limit="1" data-type="number"></div>
+                   <div class="col-4"><label>ปีการศึกษา</label><select name="reg_year" class="form-select year-list"></select></div>
+                   <div class="col-12"><label>เหตุผลการลาออก</label><input name="reg_reasson" class="form-control" data-limit="30"></div>
+                </div>
+              </div>
+              <div class="d-field hidden" data-topic="t6">
+                 <div class="row g-2">
+                   <div class="col-6"><label>เทอมขอคืนสภาพ</label><input name="re_ad" class="form-control" data-limit="1" data-type="number"></div>
+                   <div class="col-6"><label>ปีขอคืนสภาพ</label><select name="re_ad_year" class="form-select year-list"></select></div>
+                 </div>
+              </div>
+              <div class="d-field hidden" data-topic="t7 t8">
+                 <label>สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-limit="90">
+              </div>
+              <div class="d-field hidden" data-topic="t9">
+                 <label>รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-limit="90">
+              </div>
+              <div class="d-field hidden" data-topic="t10">
+                 <label>เรื่องอื่นๆ ระบุ</label><input name="other" class="form-control no-resize" data-limit="90">
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label>เหตุผลประกอบ</label>
+              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="280"></textarea>
+            </div>
+
+            <div class="mb-3 text-center">
+              <label class="fw-bold">ลงชื่อ</label><br>
+              <canvas id="sig-canvas" width="300" height="120" class="border rounded"></canvas><br>
+              <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="clearSig()">ล้าง</button>
+              <input type="hidden" name="signature_data" id="signature_data">
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">สร้าง PDF</button>
+          </form>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="card p-3">
+          <h5>ประวัติคำร้อง</h5>
+          <div id="history-list" class="list-group list-group-flush small">Loading...</div>
+          <button class="btn btn-sm btn-secondary mt-3" onclick="loadHistory()">รีเฟรช</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-/* ------- Config: 5 mock questions ------- */
-const QUESTIONS = [
-  "Clarity of instructions",
-  "Ease of booking process",
-  "Response time from staff",
-  "Cleanliness of facility",
-  "Overall experience"
-];
+  let currentUser = null;
+  let globalTemplates = [];
+  
+  const urlParams = <?!= urlParams ?> || {};
+  const serverMsg = "<?= serverMessage ?>";
+  const serverStatus = "<?= serverStatus ?>";
 
-/* ------- Helpers ------- */
-const makeScale = (namePrefix, legendText) => {
-  const fs = document.createElement('fieldset');
-  const lg = document.createElement('legend'); lg.textContent = legendText; fs.appendChild(lg);
-  const row = document.createElement('div'); row.className = 'scale';
-  for (let i=1;i<=5;i++){
-    const id = `${namePrefix}_${i}`;
-    const lab = document.createElement('label');
-    const input = document.createElement('input');
-    input.type = 'radio'; input.name = namePrefix; input.id = id; input.value = String(i);
-    lab.htmlFor = id; lab.appendChild(input); lab.appendChild(document.createTextNode(i));
-    row.appendChild(lab);
-  }
-  fs.appendChild(row);
-  return fs;
-};
-
-const makeQuestion = (idx, text) => {
-  const q = document.createElement('section'); q.className = 'q'; q.dataset.idx = idx;
-
-  const h = document.createElement('h2'); h.textContent = `Q${idx+1}. ${text}`; q.appendChild(h);
-
-  const grid = document.createElement('div'); grid.className = 'grid';
-  // Expectation scale
-  const exp = makeScale(`q${idx}_exp`, 'Expectation (1–5)');
-  grid.appendChild(exp);
-
-  // Satisfaction scale (can be disabled)
-  const sat = makeScale(`q${idx}_sat`, 'Satisfaction (1–5)');
-  sat.classList.add('sat');
-  grid.appendChild(sat);
-
-  q.appendChild(grid);
-
-  // Not satisfied toggle
-  const toggle = document.createElement('div'); toggle.className = 'inline';
-  const cb = document.createElement('input'); cb.type='checkbox'; cb.id=`q${idx}_ns`;
-  const lb = document.createElement('label'); lb.htmlFor = cb.id; lb.textContent = 'Not satisfied';
-  toggle.append(cb, lb);
-  q.appendChild(toggle);
-
-  // If not satisfied: follow-ups
-  const nswrap = document.createElement('div'); nswrap.className='nswrap';
-  const nsScale = makeScale(`q${idx}_ns_scale`, "If you're not satisfied (1–5)");
-  const reason = document.createElement('div');
-  reason.innerHTML = `<label class="muted" for="q${idx}_reason">Reason <span class="req">*</span></label>
-                      <textarea id="q${idx}_reason" name="q${idx}_reason" disabled placeholder="Tell us briefly…"></textarea>`;
-  nswrap.append(nsScale, reason);
-  q.appendChild(nswrap);
-
-  // Initial disabled state for the NS section
-  nsEnable(false, q);
-
-  // Behavior: checking "Not satisfied" disables Satisfaction scale, enables NS section
-  cb.addEventListener('change', () => {
-    const satFS = q.querySelector('.sat');
-    if (cb.checked){
-      // clear & disable Satisfaction
-      satFS.querySelectorAll('input[type="radio"]').forEach(r=>{ r.checked=false; r.disabled=true; });
-      satFS.classList.add('disabled');
-      nsEnable(true, q);
-    }else{
-      satFS.querySelectorAll('input[type="radio"]').forEach(r=> r.disabled=false);
-      satFS.classList.remove('disabled');
-      nsEnable(false, q);
+  window.onload = function() {
+    if (serverMsg && serverMsg !== 'undefined') {
+      const alertBox = document.getElementById('server-alert');
+      alertBox.className = `alert alert-${serverStatus === 'success' ? 'success' : 'danger'}`;
+      alertBox.innerText = serverMsg;
+      alertBox.classList.remove('hidden');
     }
-  });
 
-  return q;
-};
-
-function nsEnable(on, scope){
-  // Enable/disable the "If you're not satisfied" follow-ups
-  const nsFieldset = scope.querySelector('.nswrap fieldset');
-  const textarea = scope.querySelector('textarea');
-  nsFieldset.classList.toggle('disabled', !on);
-  nsFieldset.querySelectorAll('input[type="radio"]').forEach(r=>{
-    r.disabled = !on;
-    if(!on) r.checked = false;
-  });
-  textarea.disabled = !on;
-  if(!on) textarea.value = '';
-}
-
-/* ------- Render form ------- */
-const form = document.getElementById('survey');
-QUESTIONS.forEach((qText, i) => form.appendChild(makeQuestion(i, qText)));
-
-/* ------- Optional client-side check on submit ------- */
-form.addEventListener('submit', (e)=>{
-  e.preventDefault();
-  // Example: enforce reason if "Not satisfied" chosen anywhere
-  const problems = [];
-  form.querySelectorAll('.q').forEach(q=>{
-    const checkedNS = q.querySelector('.inline input[type="checkbox"]').checked;
-    if (checkedNS){
-      const txt = q.querySelector('textarea');
-      if (!txt.value.trim()) problems.push(q.dataset.idx);
+    if (urlParams.page === 'reset' && urlParams.token) {
+      document.getElementById('reset_token').value = urlParams.token;
+      showPage('reset-page');
+    } else {
+      showPage('login-page');
     }
-  });
-  if (problems.length){
-    alert('Please provide a reason for each question where you selected "Not satisfied".');
-    return;
+    
+    initInputConstraints();
+  };
+
+  function showPage(pid) {
+    document.querySelectorAll('.container > div[id$="-page"]').forEach(d => d.classList.add('hidden'));
+    document.getElementById(pid).classList.remove('hidden');
+    if(pid === 'app-page' || pid === 'register-page') setTimeout(initInputConstraints, 100);
   }
-  alert('Submitted! (Mock)');
-});
+  function showChangePassModal() { document.getElementById('change-pass-modal').classList.remove('hidden'); }
+  function toggleLoad(s) { document.getElementById('loading').classList.toggle('hidden', !s); }
+  function logout() { location.reload(); }
+
+  // --- ACTIONS ---
+  document.getElementById('loginForm').addEventListener('submit', e => {
+    e.preventDefault(); toggleLoad(true);
+    google.script.run.withSuccessHandler(res => {
+      toggleLoad(false);
+      if(res.status === 'success') {
+        currentUser = res;
+        document.getElementById('disp_name').innerText = res.name;
+        document.getElementById('disp_gender').innerText = res.gender === 'male' ? 'ชาย' : 'หญิง';
+        
+        document.getElementById('main_year').value = res.year || '';
+        document.getElementById('main_tel').value = res.tel || '';
+        document.getElementById('main_email').value = res.email || '';
+        
+        showPage('app-page');
+        initData();
+        loadHistory();
+      } else alert(res.message);
+    }).loginUser(document.getElementById('u_name').value, document.getElementById('u_pass').value);
+  });
+
+  document.getElementById('regForm').addEventListener('submit', function(e) {
+    e.preventDefault(); toggleLoad(true);
+    const data = {}; new FormData(this).forEach((v,k)=>data[k]=v);
+    google.script.run.withSuccessHandler(res => { toggleLoad(false); alert(res.message); if(res.status==='success') showPage('login-page'); }).registerUser(data);
+  });
+
+  document.getElementById('forgotForm').addEventListener('submit', e => {
+    e.preventDefault(); toggleLoad(true);
+    google.script.run.withSuccessHandler(res => { toggleLoad(false); alert(res.message); if(res.status==='success') showPage('login-page'); }).requestPasswordReset(document.getElementById('forgot_email').value);
+  });
+
+  document.getElementById('resetForm').addEventListener('submit', e => {
+    e.preventDefault(); 
+    if(document.getElementById('new_reset_pass').value !== document.getElementById('confirm_reset_pass').value) return alert('รหัสไม่ตรงกัน');
+    toggleLoad(true);
+    google.script.run.withSuccessHandler(res => { toggleLoad(false); alert(res.message); if(res.status==='success') window.location.href="<?= getScriptUrl() ?>"; }).submitResetPassword(document.getElementById('reset_token').value, document.getElementById('new_reset_pass').value);
+  });
+
+  document.getElementById('changePassForm').addEventListener('submit', function(e) {
+    e.preventDefault(); toggleLoad(true);
+    const data = new FormData(this);
+    google.script.run.withSuccessHandler(res => { toggleLoad(false); alert(res.message); if(res.status==='success'){ this.reset(); document.getElementById('change-pass-modal').classList.add('hidden'); } }).changePassword(currentUser.username, data.get('old_pass'), data.get('new_pass'));
+  });
+
+  document.getElementById('mainForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if(!currentUser) return;
+    saveSig(); toggleLoad(true);
+    const data = {}; new FormData(this).forEach((v,k)=>data[k]=v);
+    google.script.run.withSuccessHandler(res => {
+      toggleLoad(false);
+      if(res.status === 'success') {
+        if(confirm('สร้างสำเร็จ! เปิดเลยไหม?')) window.open(res.url);
+        loadHistory(); clearSig(); this.reset();
+        document.getElementById('main_year').value = currentUser.year || '';
+        document.getElementById('main_tel').value = currentUser.tel || '';
+        document.getElementById('main_email').value = currentUser.email || '';
+        document.querySelectorAll('.char-count').forEach(el => el.innerText = `0 / ${el.innerText.split(' / ')[1]}`);
+      } else alert(res.message);
+    }).withFailureHandler(e => { toggleLoad(false); alert(e); }).processForm(data, currentUser);
+  });
+
+  function loadHistory() {
+    if(!currentUser) return;
+    const el = document.getElementById('history-list');
+    el.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังโหลด...';
+    
+    google.script.run.withSuccessHandler(list => {
+      if(!list || list.length === 0) { el.innerHTML = '<div class="text-muted p-2">ไม่มีประวัติ</div>'; return; }
+      el.innerHTML = list.map(i => `
+        <div class="list-group-item py-2 history-item">
+          <div class="d-flex w-100 justify-content-between align-items-center">
+            <div style="flex:1;">
+               <strong class="d-block text-primary text-truncate" style="max-width:180px;">${i.fileName}</strong>
+               <small class="text-muted">${i.timestamp} | ${i.type}</small><br>
+               <a href="${i.url}" target="_blank" class="small text-decoration-none"><i class="bi bi-file-pdf"></i> ดู PDF</a>
+            </div>
+            <div>
+              <span class="badge bg-warning text-dark action-btn" onclick="renameItem('${i.fileId}')"><i class="bi bi-pencil"></i> แก้ชื่อ</span>
+              <span class="badge bg-danger action-btn" onclick="deleteItem('${i.fileId}')"><i class="bi bi-trash"></i> ลบ</span>
+            </div>
+          </div>
+        </div>`).join('');
+    }).withFailureHandler(e => {
+       el.innerHTML = `<div class="alert alert-danger p-2 small">Error: ${e.message}</div>`;
+    }).getUserHistory(currentUser.username);
+  }
+
+  function renameItem(fileId) {
+     const newName = prompt("กรุณาใส่ชื่อไฟล์ใหม่:");
+     if(newName) {
+       toggleLoad(true);
+       google.script.run.withSuccessHandler(res => {
+         toggleLoad(false);
+         alert(res.message);
+         if(res.status==='success') loadHistory();
+       }).renameHistory(fileId, newName, currentUser.username);
+     }
+  }
+
+  function deleteItem(fileId) {
+     if(confirm("คุณต้องการลบรายการนี้ใช่หรือไม่? (ไฟล์ใน Drive จะถูกลบด้วย)")) {
+       toggleLoad(true);
+       google.script.run.withSuccessHandler(res => {
+         toggleLoad(false);
+         alert(res.message);
+         if(res.status==='success') loadHistory();
+       }).deleteHistory(fileId, currentUser.username);
+     }
+  }
+
+  function toggleFields(topic) {
+    if (!topic) return;
+    document.getElementById('empty-msg').classList.add('hidden');
+    document.querySelectorAll('.d-field').forEach(div => {
+       const topics = div.getAttribute('data-topic').split(' ');
+       if (topics.includes(topic)) div.classList.remove('hidden');
+       else div.classList.add('hidden');
+    });
+  }
+
+  function applyTemplate() {
+    const idx = document.getElementById('template_select').value;
+    if (idx === "") {
+       document.querySelector('select[name="request_type"]').value = "";
+       document.getElementById('empty-msg').classList.remove('hidden');
+       document.querySelectorAll('.d-field').forEach(d => d.classList.add('hidden'));
+       document.querySelector('textarea[name="reason_full"]').value = "";
+       document.querySelector('input[name="custom_filename"]').value = "";
+       return;
+    }
+    
+    const t = globalTemplates[idx];
+    if (!t) return;
+
+    const reqSelect = document.querySelector('select[name="request_type"]');
+    reqSelect.value = t.topic; 
+    toggleFields(t.topic);
+    document.querySelector('textarea[name="reason_full"]').value = t.reason;
+    document.querySelector('input[name="custom_filename"]').value = t.name + "_" + currentUser.name;
+
+    let targetInputName = "";
+    switch (t.topic) {
+      case 't1': targetInputName = "major_sel"; break;     
+      case 't2': targetInputName = "major_to"; break;      
+      case 't3': targetInputName = "r_no"; break;          
+      case 't5': targetInputName = "reg_reasson"; break;   
+      case 't6': targetInputName = "re_ad"; break;         
+      case 't7': case 't8': targetInputName = "location"; break;      
+      case 't9': targetInputName = "items"; break;         
+      case 't10': targetInputName = "other"; break;        
+    }
+
+    if (targetInputName) {
+      const input = document.querySelector(`[name="${targetInputName}"]`);
+      if (input) { input.value = t.data; input.dispatchEvent(new Event('input')); }
+    }
+    document.querySelectorAll('[data-limit]').forEach(el => el.dispatchEvent(new Event('input')));
+  }
+
+  function initData() {
+    google.script.run.withSuccessHandler(d => {
+      const tOpts = '<option value="">-- เลือกอาจารย์ --</option>' + d.teachers.map(t=>`<option value="${t}">${t}</option>`).join('');
+      document.querySelectorAll('#advisor_dropdown, .teacher-list').forEach(el => el.innerHTML = tOpts);
+      
+      const mOpts = '<option value="">-- เลือกสาขา --</option>' + d.majors.map(m=>`<option value="${m}">${m}</option>`).join('');
+      document.getElementById('major_main_dropdown').innerHTML = mOpts;
+      document.querySelectorAll('.major-list').forEach(el => el.innerHTML = mOpts);
+
+      globalTemplates = d.templates || [];
+      const tempOpts = '<option value="">-- ไม่ใช้ Template (กรอกเอง) --</option>' + 
+                       globalTemplates.map((t, index) => `<option value="${index}">${t.name}</option>`).join('');
+      document.getElementById('template_select').innerHTML = tempOpts;
+    }).getTemplateData();
+  }
+
+  // Signature & Constraints
+  const canvas = document.getElementById('sig-canvas');
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+  function startDraw(e) { drawing = true; ctx.beginPath(); draw(e); }
+  function endDraw() { drawing = false; ctx.beginPath(); saveSig(); }
+  function draw(e) {
+    if (!drawing) return; e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
+    ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
+  }
+  canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mouseup', endDraw); canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('touchstart', startDraw); canvas.addEventListener('touchend', endDraw); canvas.addEventListener('touchmove', draw);
+  function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); document.getElementById('signature_data').value = ""; }
+  function saveSig() { document.getElementById('signature_data').value = canvas.toDataURL('image/png'); }
+
+  function getVisualLen(t) { return t.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '').length; }
+  
+  function initInputConstraints() {
+    document.querySelectorAll('[data-limit]').forEach(input => {
+      const parent = input.parentNode;
+      const existing = parent.querySelector('.char-count');
+      if(existing) existing.remove();
+
+      const limit = parseInt(input.getAttribute('data-limit'));
+      const counterEl = document.createElement('div');
+      counterEl.className = 'char-count';
+      counterEl.innerText = `0 / ${limit}`;
+      
+      input.insertAdjacentElement('afterend', counterEl);
+
+      const update = () => {
+         let val = input.value;
+         if (input.getAttribute('data-type') === 'number') val = val.replace(/\D/g, '');
+         while (getVisualLen(val) > limit) val = val.slice(0, -1);
+         input.value = val;
+         const len = getVisualLen(val);
+         counterEl.innerText = `${len} / ${limit}`;
+         counterEl.classList.toggle('limit-reached', len >= limit);
+      };
+      input.addEventListener('input', update);
+      if(input.value) update();
+    });
+    
+    const ys = document.querySelectorAll('.year-list');
+    let opts = '<option value="">-- เลือกปี --</option>';
+    for(let y=2560; y<=2570; y++) opts += `<option value="${y}">${y}</option>`;
+    ys.forEach(s => s.innerHTML = opts);
+  }
 </script>
 </body>
 </html>
