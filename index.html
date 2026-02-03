@@ -16,7 +16,17 @@
     .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; display: flex; justify-content: center; align-items: center; }
     #sig-canvas { background: #fff; cursor: crosshair; touch-action: none; }
     .history-item { position: relative; }
-    .action-btn { font-size: 0.8rem; cursor: pointer; margin-left: 5px; }
+    .status-wait { background-color: #ffc107; color: #000; }
+    .status-received { background-color: #17a2b8; color: #fff; }
+    .status-done { background-color: #28a745; color: #fff; }
+    
+    /* Admin Table Styles */
+    .admin-panel { border-left: 5px solid #0d6efd; background: #fff; }
+    .sortable { cursor: pointer; user-select: none; position: relative; }
+    .sortable:hover { background-color: #e9ecef !important; }
+    .sort-icon { font-size: 0.8rem; margin-left: 5px; color: #999; }
+    .sort-asc .sort-icon::after { content: "▲"; color: #000; }
+    .sort-desc .sort-icon::after { content: "▼"; color: #000; }
   </style>
 </head>
 <body>
@@ -24,6 +34,8 @@
 <div id="loading" class="loading-overlay hidden">
   <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
 </div>
+
+<input type="file" id="file-input" class="hidden" accept="application/pdf,image/*">
 
 <div class="container py-5">
   <div id="server-alert" class="alert hidden text-center" role="alert"></div>
@@ -45,71 +57,60 @@
     </div>
   </div>
 
-  <div id="register-page" class="row justify-content-center hidden">
-    <div class="col-md-6">
-      <div class="card p-4">
-        <h3 class="text-center mb-4">ลงทะเบียน</h3>
+  <div id="register-page" class="hidden row justify-content-center">
+     <div class="col-md-6 card p-4">
+        <h4>ลงทะเบียน</h4>
         <div class="alert alert-info small"><i class="bi bi-info-circle"></i> โปรดใช้อีเมลจริง เพื่อรับลิงก์ยืนยันตัวตน</div>
         <form id="regForm">
-          <div class="row g-2">
-            <div class="col-md-6 mb-3"><label>Username</label><input type="text" name="reg_username" class="form-control" required></div>
-            <div class="col-md-6 mb-3"><label>Password</label><input type="password" name="reg_password" class="form-control" required></div>
-          </div>
-          <div class="mb-3"><label>ชื่อ-นามสกุล (ภาษาไทย)</label><input type="text" name="reg_name" class="form-control" data-limit="30" required></div>
-          
-          <div class="mb-3">
-            <label>เพศ</label>
-            <div class="mt-2">
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="reg_gender" value="male" required>
-                <label class="form-check-label">ชาย</label>
-              </div>
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="reg_gender" value="female" required>
-                <label class="form-check-label">หญิง</label>
-              </div>
-            </div>
-          </div>
+           <div class="row g-2">
+             <div class="col-6 mb-2"><input type="text" name="reg_username" class="form-control" placeholder="Username" required></div>
+             <div class="col-6 mb-2"><input type="password" name="reg_password" class="form-control" placeholder="Password" required></div>
+           </div>
+           <input type="text" name="reg_name" class="form-control mb-2" placeholder="ชื่อ-นามสกุล (ภาษาไทย)" required>
+           
+           <div class="mb-2">
+             <label class="form-label me-2">เพศ:</label>
+             <div class="form-check form-check-inline">
+               <input class="form-check-input" type="radio" name="reg_gender" value="male" required> <label>ชาย</label>
+             </div>
+             <div class="form-check form-check-inline">
+               <input class="form-check-input" type="radio" name="reg_gender" value="female" required> <label>หญิง</label>
+             </div>
+           </div>
 
-          <div class="row g-2 mb-3">
-            <div class="col-md-8"><label>รหัสนักศึกษา</label><input type="tel" name="reg_std_id" class="form-control" data-limit="10" data-type="number" required></div>
-            <div class="col-md-4"><label>ชั้นปีที่</label><input type="tel" name="reg_year" class="form-control" data-limit="1" data-type="number" required></div>
-          </div>
-          <div class="row g-2 mb-3">
-             <div class="col-md-6"><label>เบอร์โทรศัพท์</label><input type="tel" name="reg_tel" class="form-control" data-limit="10" data-type="number" required></div>
-             <div class="col-md-6"><label>Email</label><input type="email" name="reg_email" class="form-control" data-limit="60" required></div>
-          </div>
-          <button type="submit" class="btn btn-success w-100">ยืนยันการสมัคร</button>
-          <div class="text-center mt-3"><a href="#" onclick="showPage('login-page')">กลับไป Login</a></div>
+           <div class="row g-2 mb-2">
+             <div class="col-8"><input type="tel" name="reg_std_id" class="form-control" placeholder="รหัสนักศึกษา" required></div>
+             <div class="col-4"><input type="tel" name="reg_year" class="form-control" placeholder="ชั้นปี" required></div>
+           </div>
+           <input type="tel" name="reg_tel" class="form-control mb-2" placeholder="เบอร์โทรศัพท์" required>
+           <input type="email" name="reg_email" class="form-control mb-2" placeholder="Email" required>
+           
+           <button class="btn btn-success w-100">ยืนยันการสมัคร</button>
+           <div class="text-center mt-2"><a href="#" onclick="showPage('login-page')">กลับไป Login</a></div>
         </form>
-      </div>
-    </div>
+     </div>
   </div>
 
   <div id="forgot-page" class="row justify-content-center hidden">
-    <div class="col-md-5">
-      <div class="card p-4">
-        <h4 class="text-center mb-3">ลืมรหัสผ่าน</h4>
-        <form id="forgotForm">
-          <div class="mb-3"><input type="email" id="forgot_email" class="form-control" placeholder="อีเมลของคุณ" required></div>
-          <button type="submit" class="btn btn-warning w-100">ส่งลิงก์รีเซ็ต</button>
-          <div class="text-center mt-3"><a href="#" onclick="showPage('login-page')">กลับไป Login</a></div>
-        </form>
-      </div>
+    <div class="col-md-5 card p-4">
+      <h4 class="text-center">ลืมรหัสผ่าน</h4>
+      <form id="forgotForm">
+        <div class="mb-3"><input type="email" id="forgot_email" class="form-control" placeholder="อีเมลของคุณ" required></div>
+        <button type="submit" class="btn btn-warning w-100">ส่งลิงก์รีเซ็ต</button>
+        <div class="text-center mt-3"><a href="#" onclick="showPage('login-page')">กลับ</a></div>
+      </form>
     </div>
   </div>
 
   <div id="reset-page" class="row justify-content-center hidden">
-    <div class="col-md-5">
-      <div class="card p-4">
-        <h4 class="text-center mb-3">ตั้งรหัสผ่านใหม่</h4>
-        <form id="resetForm">
-          <input type="hidden" id="reset_token">
-          <div class="mb-3"><label>รหัสผ่านใหม่</label><input type="password" id="new_reset_pass" class="form-control" required></div>
-          <div class="mb-3"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="confirm_reset_pass" class="form-control" required></div>
-          <button type="submit" class="btn btn-primary w-100">บันทึกรหัสผ่าน</button>
-        </form>
-      </div>
+    <div class="col-md-5 card p-4">
+      <h4 class="text-center">ตั้งรหัสผ่านใหม่</h4>
+      <form id="resetForm">
+        <input type="hidden" id="reset_token">
+        <div class="mb-3"><input type="password" id="new_reset_pass" class="form-control" placeholder="รหัสใหม่" required></div>
+        <div class="mb-3"><input type="password" id="confirm_reset_pass" class="form-control" placeholder="ยืนยันรหัสใหม่" required></div>
+        <button type="submit" class="btn btn-primary w-100">บันทึก</button>
+      </form>
     </div>
   </div>
 
@@ -117,14 +118,53 @@
     <nav class="navbar navbar-light bg-white rounded shadow-sm px-4 mb-4 d-flex justify-content-between align-items-center">
       <div>
         <span class="navbar-brand h1 m-0">สวัสดี, <span id="disp_name"></span></span>
-        <span id="disp_gender" class="badge bg-secondary ms-2 small"></span>
+        <span id="disp_gender" class="badge bg-secondary ms-1 small"></span>
+        <span id="disp_role" class="badge bg-dark ms-1 small"></span>
       </div>
       <div>
-        <button class="btn btn-outline-secondary btn-sm me-2" onclick="showChangePassModal()">เปลี่ยนรหัสผ่าน</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="logout()">Logout</button>
+        <button class="btn btn-outline-secondary btn-sm me-2" onclick="showChangePassModal()">เปลี่ยนรหัส</button>
+        <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
       </div>
     </nav>
-    
+
+    <div id="admin-section" class="card p-4 mb-4 admin-panel hidden">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-shield-lock"></i> Admin Console</h4>
+        <div>
+           <span class="badge bg-primary rounded-pill" id="admin-count">0 รายการ</span>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-8">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" id="admin-search" class="form-control" placeholder="ค้นหา Username, หัวข้อ, หรือ สถานะ..." onkeyup="filterAdminTable()">
+          </div>
+        </div>
+        <div class="col-md-4 text-end">
+          <button class="btn btn-warning btn-sm" onclick="promptBanUser()"><i class="bi bi-person-x"></i> Ban User</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover table-sm small align-middle">
+          <thead class="table-light">
+            <tr>
+              <th class="sortable" onclick="sortAdminTable('timestamp')">Date <span id="sort-timestamp" class="sort-icon"></span></th>
+              <th class="sortable" onclick="sortAdminTable('username')">User <span id="sort-username" class="sort-icon"></span></th>
+              <th class="sortable" onclick="sortAdminTable('topic')">Topic <span id="sort-topic" class="sort-icon"></span></th>
+              <th>File</th>
+              <th class="sortable" onclick="sortAdminTable('status')">Status <span id="sort-status" class="sort-icon"></span></th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-table-body">
+            </tbody>
+        </table>
+      </div>
+    </div>
+
     <div id="change-pass-modal" class="card p-3 mb-4 border-warning hidden">
       <h5>เปลี่ยนรหัสผ่าน</h5>
       <form id="changePassForm">
@@ -137,15 +177,15 @@
       <div class="text-end mt-2"><a href="#" class="small text-muted" onclick="document.getElementById('change-pass-modal').classList.add('hidden')">ปิด</a></div>
     </div>
 
-    <div class="alert alert-secondary mb-3">
-      <label class="fw-bold small mb-1"><i class="bi bi-magic"></i> เลือกแบบฟอร์มอัตโนมัติ (Template)</label>
-      <select id="template_select" class="form-select" onchange="applyTemplate()">
-        <option value="">-- ไม่ใช้ Template --</option>
-      </select>
-    </div>
-
     <div class="row">
-      <div class="col-md-8">
+      <div class="col-md-7">
+        <div class="alert alert-secondary mb-3">
+          <label class="fw-bold small mb-1"><i class="bi bi-magic"></i> เลือกแบบฟอร์มอัตโนมัติ (Template)</label>
+          <select id="template_select" class="form-select" onchange="applyTemplate()">
+            <option value="">-- ไม่ใช้ Template --</option>
+          </select>
+        </div>
+
         <div class="card p-4 mb-4">
           <h4 class="mb-3">แบบฟอร์มคำร้อง</h4>
           <form id="mainForm">
@@ -247,11 +287,11 @@
         </div>
       </div>
       
-      <div class="col-md-4">
+      <div class="col-md-5">
         <div class="card p-3">
-          <h5>ประวัติคำร้อง</h5>
+          <h5>สถานะและประวัติคำร้อง</h5>
           <div id="history-list" class="list-group list-group-flush small">Loading...</div>
-          <button class="btn btn-sm btn-secondary mt-3" onclick="loadHistory()">รีเฟรช</button>
+          <button class="btn btn-sm btn-secondary mt-3" onclick="loadRequests()">รีเฟรชข้อมูล</button>
         </div>
       </div>
     </div>
@@ -261,6 +301,46 @@
 <script>
   let currentUser = null;
   let globalTemplates = [];
+  let currentUploadFileId = null;
+  let adminDataList = [];
+  let currentSort = { col: 'timestamp', order: 'desc' };
+
+  // --- 🔴 SESSION MANAGEMENT (จำค่าล็อกอิน 5 นาที) ---
+  const SESSION_KEY = 'JC_FORM_SESSION';
+  const SESSION_DURATION = 5 * 60 * 1000; // 5 นาที
+
+  function saveSession(userData) {
+    const sessionData = {
+      user: userData,
+      expiry: new Date().getTime() + SESSION_DURATION
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+  }
+
+  function checkSession() {
+    const sessionString = localStorage.getItem(SESSION_KEY);
+    if (!sessionString) return null;
+    const session = JSON.parse(sessionString);
+    if (new Date().getTime() > session.expiry) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return session.user;
+  }
+  // ----------------------------------------------------
+
+  const TOPIC_MAP = {
+      't1': 'เลือกเรียนกลุ่มวิชา',
+      't2': 'ขอเปลี่ยนกลุ่มวิชา',
+      't3': 'ขอใบรับรองความประพฤติ',
+      't4': 'ขออนุมัติย้ายคณะ',
+      't5': 'ขอลาออก',
+      't6': 'ขอคืนสภาพนักศึกษา',
+      't7': 'ขอใช้สถานที่',
+      't8': 'ขออนุญาตใช้ห้อง',
+      't9': 'ขอยืมอุปกรณ์',
+      't10': 'อื่นๆ'
+  };
   
   const urlParams = <?!= urlParams ?> || {};
   const serverMsg = "<?= serverMessage ?>";
@@ -278,11 +358,38 @@
       document.getElementById('reset_token').value = urlParams.token;
       showPage('reset-page');
     } else {
-      showPage('login-page');
+        // --- ตรวจสอบ SESSION ก่อนแสดงหน้า Login ---
+        const savedUser = checkSession();
+        if (savedUser) {
+            setupAppUI(savedUser); // ถ้ามี Session ให้เข้าหน้าแอปเลย
+        } else {
+            showPage('login-page');
+        }
     }
-    
     initInputConstraints();
   };
+
+  // ฟังก์ชันตั้งค่าหน้าจอเมื่อล็อกอินสำเร็จ
+  function setupAppUI(user) {
+    currentUser = user;
+    document.getElementById('disp_name').innerText = user.name;
+    document.getElementById('disp_gender').innerText = user.gender === 'male' ? 'ชาย' : 'หญิง';
+    
+    if(user.role === 'admin') {
+       document.getElementById('admin-section').classList.remove('hidden');
+       document.getElementById('disp_role').innerText = 'Admin';
+    } else {
+       document.getElementById('admin-section').classList.add('hidden');
+    }
+
+    document.getElementById('main_year').value = user.year || '';
+    document.getElementById('main_tel').value = user.tel || '';
+    document.getElementById('main_email').value = user.email || '';
+    
+    showPage('app-page');
+    initData();
+    loadRequests();
+  }
 
   function showPage(pid) {
     document.querySelectorAll('.container > div[id$="-page"]').forEach(d => d.classList.add('hidden'));
@@ -291,25 +398,20 @@
   }
   function showChangePassModal() { document.getElementById('change-pass-modal').classList.remove('hidden'); }
   function toggleLoad(s) { document.getElementById('loading').classList.toggle('hidden', !s); }
-  function logout() { location.reload(); }
+  
+  function logout() { 
+      localStorage.removeItem(SESSION_KEY); // ลบ Session
+      location.reload(); 
+  }
 
-  // --- ACTIONS ---
+  // --- LOGIN & REGISTER LOGIC ---
   document.getElementById('loginForm').addEventListener('submit', e => {
     e.preventDefault(); toggleLoad(true);
     google.script.run.withSuccessHandler(res => {
       toggleLoad(false);
       if(res.status === 'success') {
-        currentUser = res;
-        document.getElementById('disp_name').innerText = res.name;
-        document.getElementById('disp_gender').innerText = res.gender === 'male' ? 'ชาย' : 'หญิง';
-        
-        document.getElementById('main_year').value = res.year || '';
-        document.getElementById('main_tel').value = res.tel || '';
-        document.getElementById('main_email').value = res.email || '';
-        
-        showPage('app-page');
-        initData();
-        loadHistory();
+        saveSession(res); // บันทึก Session เมื่อ Login ผ่าน
+        setupAppUI(res);
       } else alert(res.message);
     }).loginUser(document.getElementById('u_name').value, document.getElementById('u_pass').value);
   });
@@ -347,7 +449,7 @@
       toggleLoad(false);
       if(res.status === 'success') {
         if(confirm('สร้างสำเร็จ! เปิดเลยไหม?')) window.open(res.url);
-        loadHistory(); clearSig(); this.reset();
+        loadRequests(); clearSig(); this.reset();
         document.getElementById('main_year').value = currentUser.year || '';
         document.getElementById('main_tel').value = currentUser.tel || '';
         document.getElementById('main_email').value = currentUser.email || '';
@@ -356,30 +458,200 @@
     }).withFailureHandler(e => { toggleLoad(false); alert(e); }).processForm(data, currentUser);
   });
 
-  function loadHistory() {
+  // --- DASHBOARD & ADMIN LOGIC ---
+  function loadRequests() {
     if(!currentUser) return;
+    google.script.run.withSuccessHandler(data => {
+      renderHistory(data);
+      if(currentUser.role === 'admin') {
+          adminDataList = data;
+          renderAdminTable(adminDataList);
+      }
+    }).getRequestsData(currentUser);
+  }
+
+  function renderHistory(list) {
     const el = document.getElementById('history-list');
-    el.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังโหลด...';
+    if(!list.length) { el.innerHTML = '<div class="text-muted">ไม่มีประวัติ</div>'; return; }
     
-    google.script.run.withSuccessHandler(list => {
-      if(!list || list.length === 0) { el.innerHTML = '<div class="text-muted p-2">ไม่มีประวัติ</div>'; return; }
-      el.innerHTML = list.map(i => `
+    el.innerHTML = list.map(i => {
+      let badge = `<span class="badge status-wait">รอ</span>`;
+      if(i.status === 'รับเรื่องแล้ว') badge = `<span class="badge status-received">รับเรื่องแล้ว</span>`;
+      if(i.status === 'เสร็จสิ้น') badge = `<span class="badge status-done">เสร็จสิ้น</span>`;
+
+      let adminFileLink = i.adminFile ? `<div class="mt-2"><a href="${i.adminFile}" target="_blank" class="btn btn-success btn-sm w-100"><i class="bi bi-check-circle"></i> ดาวน์โหลดเอกสาร (เสร็จสิ้น)</a></div>` : '';
+
+      return `
         <div class="list-group-item py-2 history-item">
-          <div class="d-flex w-100 justify-content-between align-items-center">
+          <div class="d-flex justify-content-between align-items-start">
             <div style="flex:1;">
                <strong class="d-block text-primary text-truncate" style="max-width:180px;">${i.fileName}</strong>
-               <small class="text-muted">${i.timestamp} | ${i.type}</small><br>
-               <a href="${i.url}" target="_blank" class="small text-decoration-none"><i class="bi bi-file-pdf"></i> ดู PDF</a>
+               <small class="text-muted">${i.timestamp} | ${i.type}</small>
             </div>
-            <div>
-              <span class="badge bg-warning text-dark action-btn" onclick="renameItem('${i.fileId}')"><i class="bi bi-pencil"></i> แก้ชื่อ</span>
-              <span class="badge bg-danger action-btn" onclick="deleteItem('${i.fileId}')"><i class="bi bi-trash"></i> ลบ</span>
-            </div>
+            ${badge}
           </div>
-        </div>`).join('');
-    }).withFailureHandler(e => {
-       el.innerHTML = `<div class="alert alert-danger p-2 small">Error: ${e.message}</div>`;
-    }).getUserHistory(currentUser.username);
+          <div class="mt-1">
+             <a href="${i.pdfUrl}" target="_blank" class="small text-decoration-none"><i class="bi bi-file-earmark-pdf"></i> ต้นฉบับ</a>
+             ${i.studentFile ? ` | <a href="${i.studentFile}" target="_blank" class="small text-decoration-none text-info"><i class="bi bi-file-earmark-arrow-up"></i> ไฟล์ที่ส่งแล้ว</a>` : ''}
+          </div>
+          ${adminFileLink}
+          <div class="mt-2 pt-2 border-top">
+             <button class="btn btn-outline-primary btn-sm w-100" style="font-size: 0.8rem;" onclick="triggerUpload('${i.fileId}')">
+               <i class="bi bi-upload"></i> อัปโหลดไฟล์ใหม่ / ส่งแบบฟอร์ม
+             </button>
+             <div class="mt-1 d-flex justify-content-end">
+               <span class="badge bg-warning text-dark action-btn" onclick="renameItem('${i.fileId}')" style="cursor:pointer; margin-right:5px;">แก้ชื่อ</span>
+               <span class="badge bg-danger action-btn" onclick="deleteItem('${i.fileId}')" style="cursor:pointer;">ลบ</span>
+             </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderAdminTable(list) {
+    const tbody = document.getElementById('admin-table-body');
+    document.getElementById('admin-count').innerText = `${list.length} รายการ`;
+
+    if(list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">ไม่พบข้อมูล</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = list.map(i => {
+        const topicName = TOPIC_MAP[i.type] || i.type || '-';
+        let statusClass = 'bg-secondary';
+        if(i.status === 'รอ') statusClass = 'bg-warning text-dark';
+        else if(i.status === 'รับเรื่องแล้ว') statusClass = 'bg-info text-white';
+        else if(i.status === 'เสร็จสิ้น') statusClass = 'bg-success text-white';
+
+        return `
+      <tr>
+        <td class="text-nowrap">${i.timestamp}</td>
+        <td>${i.username}</td>
+        <td><span class="badge bg-light text-dark border">${topicName}</span></td>
+        <td>
+            <a href="${i.pdfUrl}" target="_blank" class="text-decoration-none">
+                <i class="bi bi-file-pdf text-danger"></i> ${i.fileName.substring(0, 15)}...
+            </a>
+        </td>
+        <td>
+          <select class="form-select form-select-sm badge ${statusClass}" 
+                  style="width:auto; cursor:pointer;" 
+                  onchange="changeStatus('${i.fileId}', this.value); this.className='form-select form-select-sm badge '+ (this.value==='รอ'?'bg-warning text-dark':(this.value==='รับเรื่องแล้ว'?'bg-info text-white':'bg-success text-white'))">
+            <option value="รอ" class="bg-white text-dark" ${i.status==='รอ'?'selected':''}>รอ</option>
+            <option value="รับเรื่องแล้ว" class="bg-white text-dark" ${i.status==='รับเรื่องแล้ว'?'selected':''}>รับเรื่อง</option>
+            <option value="เสร็จสิ้น" class="bg-white text-dark" ${i.status==='เสร็จสิ้น'?'selected':''}>เสร็จสิ้น</option>
+          </select>
+        </td>
+        <td>
+          <div class="btn-group" role="group">
+             <button class="btn btn-outline-secondary btn-sm" onclick="triggerUpload('${i.fileId}')" title="Upload Result"><i class="bi bi-upload"></i></button>
+             ${i.studentFile ? `<a href="${i.studentFile}" target="_blank" class="btn btn-outline-primary btn-sm" title="View User File"><i class="bi bi-eye"></i></a>` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+    }).join('');
+    updateSortIcons();
+  }
+
+  function sortAdminTable(col) {
+    if (currentSort.col === col) {
+        currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.col = col;
+        currentSort.order = 'asc';
+    }
+
+    const sortedList = [...adminDataList].sort((a, b) => {
+        let valA, valB;
+        if (col === 'timestamp') {
+            valA = parseCustomDate(a.timestamp);
+            valB = parseCustomDate(b.timestamp);
+        } else if (col === 'topic') {
+            valA = TOPIC_MAP[a.type] || a.type || '';
+            valB = TOPIC_MAP[b.type] || b.type || '';
+        } else {
+            valA = String(a[col] || '').toLowerCase();
+            valB = String(b[col] || '').toLowerCase();
+        }
+
+        if (valA < valB) return currentSort.order === 'asc' ? -1 : 1;
+        if (valA > valB) return currentSort.order === 'asc' ? 1 : -1;
+        return 0;
+    });
+    
+    filterAdminTable(sortedList);
+  }
+
+  function filterAdminTable(sourceList = null) {
+    let list = sourceList;
+    if (!sourceList) {
+         sortAdminTable(currentSort.col); 
+         return; 
+    }
+
+    const term = document.getElementById('admin-search').value.toLowerCase().trim();
+    const filtered = list.filter(item => {
+        const topic = (TOPIC_MAP[item.type] || '').toLowerCase();
+        const user = (item.username || '').toLowerCase();
+        const status = (item.status || '').toLowerCase();
+        const date = (item.timestamp || '').toLowerCase();
+        
+        return user.includes(term) || topic.includes(term) || status.includes(term) || date.includes(term);
+    });
+
+    renderAdminTable(filtered);
+  }
+
+  function parseCustomDate(dateStr) {
+    if(!dateStr || dateStr === '-') return 0;
+    const [dRange, tRange] = dateStr.split(' ');
+    if(!dRange) return 0;
+    const [d, m, y] = dRange.split('/');
+    const [hr, min] = tRange ? tRange.split(':') : [0,0];
+    return new Date(y, m-1, d, hr, min).getTime();
+  }
+
+  function updateSortIcons() {
+    document.querySelectorAll('.sort-icon').forEach(el => el.parentElement.className = 'sortable');
+    const activeHeader = document.querySelector(`th[onclick="sortAdminTable('${currentSort.col}')"]`);
+    if(activeHeader) {
+        activeHeader.className = `sortable sort-${currentSort.order}`;
+    }
+  }
+
+  // --- UPLOAD, UTILS & INIT ---
+  function triggerUpload(fileId) {
+    currentUploadFileId = fileId;
+    document.getElementById('file-input').click();
+  }
+
+  document.getElementById('file-input').addEventListener('change', function() {
+    if (this.files.length === 0) return;
+    const file = this.files[0];
+    const reader = new FileReader();
+    toggleLoad(true);
+    reader.onload = function(e) {
+      google.script.run.withSuccessHandler(res => {
+        toggleLoad(false);
+        alert(res.message);
+        loadRequests(); 
+      }).uploadFile(e.target.result, file.type, currentUploadFileId, currentUser.role, currentUser.username);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function changeStatus(fileId, newStatus) {
+    google.script.run.withSuccessHandler(msg => console.log(msg)).adminUpdateStatus(fileId, newStatus);
+  }
+
+  function promptBanUser() {
+    const email = prompt("กรอก Email ที่ต้องการระงับการใช้งาน:");
+    if(email) {
+      toggleLoad(true);
+      google.script.run.withSuccessHandler(res => { toggleLoad(false); alert(res); }).adminBanUser(email);
+    }
   }
 
   function renameItem(fileId) {
@@ -389,18 +661,18 @@
        google.script.run.withSuccessHandler(res => {
          toggleLoad(false);
          alert(res.message);
-         if(res.status==='success') loadHistory();
+         if(res.status==='success') loadRequests();
        }).renameHistory(fileId, newName, currentUser.username);
      }
   }
 
   function deleteItem(fileId) {
-     if(confirm("คุณต้องการลบรายการนี้ใช่หรือไม่? (ไฟล์ใน Drive จะถูกลบด้วย)")) {
+     if(confirm("คุณต้องการลบรายการนี้ใช่หรือไม่?")) {
        toggleLoad(true);
        google.script.run.withSuccessHandler(res => {
          toggleLoad(false);
          alert(res.message);
-         if(res.status==='success') loadHistory();
+         if(res.status==='success') loadRequests();
        }).deleteHistory(fileId, currentUser.username);
      }
   }
@@ -470,7 +742,6 @@
     }).getTemplateData();
   }
 
-  // Signature & Constraints
   const canvas = document.getElementById('sig-canvas');
   const ctx = canvas.getContext('2d');
   let drawing = false;
