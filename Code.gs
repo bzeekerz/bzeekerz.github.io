@@ -188,11 +188,11 @@ function processForm(formData, userInfo) {
     }
 
     let fullText = formData.reason_full || "";
-    let res_1 = truncate(fullText, 35);
+    let res_1 = truncate(fullText, 40);
     fullText = fullText.substring(res_1.length);
-    let res_2 = truncate(fullText, 85);
+    let res_2 = truncate(fullText, 120);
     fullText = fullText.substring(res_2.length);
-    let res_3 = truncate(fullText, 85);
+    let res_3 = truncate(fullText, 120);
 
     let reqType = formData.request_type; 
     const val = (topic, value) => (reqType === topic || (Array.isArray(topic) && topic.includes(reqType))) ? value : "";
@@ -430,36 +430,16 @@ function renameHistory(fileId, newName, username) {
   return { status: 'error', message: 'Error' };
 }
 
-function truncate(text, limitScore) {
+function truncate(text, limit) {
   if (!text) return "";
   text = String(text);
-  
-  let currentScore = 0;
-  let result = "";
-  
+  const getVisualLen = (t) => t.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '').length;
+  let current = "";
   for (let char of text) {
-    let score = 1; // ค่าความกว้างปกติ (ก, ข, A, B, ฯลฯ)
-
-    // 1. ตัวกว้างพิเศษ (ภาษาไทย: ฒ, ณ, ญ, ฐ / อังกฤษ: W, M, m, @)
-    if (char.match(/[ฒณญฐWm@]/)) {
-      score = 1.3; 
-    } 
-    // 2. ตัวแคบพิเศษ (อังกฤษ: i, l, I, t, 1, ., ,)
-    else if (char.match(/[ilIt1.,:;]/)) {
-      score = 0.5;
-    }
-    // 3. สระบน-ล่าง/วรรณยุกต์ (ไม่ต้องกินพื้นที่แนวนอนเพิ่ม)
-    else if (char.match(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/)) {
-      score = 0; 
-    }
-
-    // ถ้าคะแนนรวมเกินลิมิต ให้หยุดทันที
-    if (currentScore + score > limitScore) break;
-
-    currentScore += score;
-    result += char;
+    if (getVisualLen(current + char) > limit) break;
+    current += char;
   }
-  return result;
+  return current;
 }
 
 function replaceTextWithImage(slide, searchText, base64Data) {
@@ -616,4 +596,3 @@ function testPushSystem() {
   // ส่งข้อความทดสอบที่มีตัวหนังสือจริงๆ
   sendLinePushMessage("🟢 ทดสอบระบบ: การเชื่อมต่อสำเร็จ! (จาก Admin)");
 }
-
