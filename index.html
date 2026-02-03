@@ -4,146 +4,309 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JC Request Form</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  
   <style>
-    body { background: #f0f2f5; font-family: 'Sarabun', sans-serif; }
-    .card { border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-radius: 12px; }
+    /* --- JCTU Theme Variables --- */
+    :root {
+      --jctu-primary: #76236C; /* สีม่วงเม็ดมะปราง (โดยประมาณ) */
+      --jctu-dark: #4a1243;
+      --jctu-light: #f3e5f5;
+      --jctu-bg-gradient: linear-gradient(135deg, #fdfbfd 0%, #f4ebf4 100%);
+    }
+
+    body { 
+      background: var(--jctu-bg-gradient); 
+      font-family: 'Sarabun', sans-serif; 
+      color: #333;
+      min-height: 100vh;
+    }
+
+    /* --- Overriding Bootstrap Colors to JCTU Purple --- */
+    .text-primary { color: var(--jctu-primary) !important; }
+    .bg-primary { background-color: var(--jctu-primary) !important; }
+    .btn-primary {
+      background-color: var(--jctu-primary);
+      border-color: var(--jctu-primary);
+      box-shadow: 0 4px 6px rgba(118, 35, 108, 0.2);
+      transition: all 0.2s ease;
+    }
+    .btn-primary:hover {
+      background-color: var(--jctu-dark);
+      border-color: var(--jctu-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 8px rgba(118, 35, 108, 0.3);
+    }
+    .btn-outline-primary {
+      color: var(--jctu-primary);
+      border-color: var(--jctu-primary);
+    }
+    .btn-outline-primary:hover {
+      background-color: var(--jctu-primary);
+      color: #fff;
+    }
+
+    /* --- UI Components --- */
+    .card { 
+      border: none; 
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+      border-radius: 16px; 
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      transition: transform 0.2s;
+    }
+    
+    .logo-img {
+      max-height: 80px;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    }
+
+    .navbar {
+      background: #fff !important;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      border-radius: 12px;
+    }
+
+    .form-control, .form-select {
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      padding: 0.6rem 0.8rem;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--jctu-primary);
+      box-shadow: 0 0 0 0.25rem rgba(118, 35, 108, 0.15);
+    }
+
     .hidden { display: none !important; }
     .no-resize { resize: none !important; }
-    .char-count { font-size: 0.8rem; color: #6c757d; display: block; text-align: right; margin-top: 2px; }
-    .char-count.limit-reached { color: #dc3545; font-weight: bold; }
-    .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; display: flex; justify-content: center; align-items: center; }
-    #sig-canvas { background: #fff; cursor: crosshair; touch-action: none; }
-    .history-item { position: relative; }
-    .status-wait { background-color: #ffc107; color: #000; }
-    .status-received { background-color: #17a2b8; color: #fff; }
-    .status-done { background-color: #28a745; color: #fff; }
+    
+    /* Character Count */
+    .char-count { font-size: 0.75rem; color: #999; display: block; text-align: right; margin-top: 4px; }
+    .char-count.limit-reached { color: #dc3545; font-weight: 600; }
+    
+    /* Loader */
+    .loading-overlay { 
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: rgba(255,255,255,0.85); z-index: 9999; 
+      display: flex; flex-direction: column; justify-content: center; align-items: center; 
+    }
+    
+    /* Canvas */
+    #sig-canvas { 
+      background: #fcfcfc; 
+      cursor: crosshair; 
+      touch-action: none; 
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+    }
+    
+    /* Status Badges */
+    .status-wait { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .status-received { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    .status-done { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+    /* List Item */
+    .history-item { 
+      border-left: 4px solid transparent; 
+      transition: bg 0.2s;
+    }
+    .history-item:hover { background-color: #f8f9fa; }
     
     /* Admin Table Styles */
-    .admin-panel { border-left: 5px solid #0d6efd; background: #fff; }
+    .admin-panel { border-left: 5px solid var(--jctu-primary); }
     .sortable { cursor: pointer; user-select: none; position: relative; }
-    .sortable:hover { background-color: #e9ecef !important; }
-    .sort-icon { font-size: 0.8rem; margin-left: 5px; color: #999; }
-    .sort-asc .sort-icon::after { content: "▲"; color: #000; }
-    .sort-desc .sort-icon::after { content: "▼"; color: #000; }
+    .sortable:hover { background-color: #f1f1f1 !important; color: var(--jctu-primary); }
+    .sort-icon { font-size: 0.8rem; margin-left: 5px; color: #ccc; }
+    .sort-asc .sort-icon::after { content: "▲"; color: var(--jctu-primary); }
+    .sort-desc .sort-icon::after { content: "▼"; color: var(--jctu-primary); }
+
+    /* Animations */
+    .fade-in { animation: fadeIn 0.4s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
 
 <div id="loading" class="loading-overlay hidden">
-  <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+  <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="Loading..." style="width: 60px; margin-bottom: 15px;">
+  <div class="spinner-border text-primary" style="width: 2.5rem; height: 2.5rem;" role="status"></div>
+  <small class="text-muted mt-2">กำลังประมวลผล...</small>
 </div>
 
 <input type="file" id="file-input" class="hidden" accept="application/pdf,image/*">
 
-<div class="container py-5">
-  <div id="server-alert" class="alert hidden text-center" role="alert"></div>
+<div class="container py-4">
+  <div id="server-alert" class="alert hidden text-center shadow-sm" role="alert"></div>
 
-  <div id="login-page" class="row justify-content-center">
-    <div class="col-md-5">
-      <div class="card p-4">
-        <h3 class="text-center mb-4">เข้าสู่ระบบ</h3>
+  <div id="login-page" class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-5 col-lg-4">
+      <div class="text-center fade-in">
+        <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="JC TU Logo" class="logo-img">
+        <h4 class="fw-bold mb-4" style="color: var(--jctu-primary);">ระบบคำร้องออนไลน์</h4>
+      </div>
+      <div class="card p-4 fade-in">
+        <h5 class="text-center mb-4 text-muted">เข้าสู่ระบบ / Login</h5>
         <form id="loginForm">
-          <div class="mb-3"><input type="text" class="form-control" id="u_name" placeholder="Username" required></div>
-          <div class="mb-3"><input type="password" class="form-control" id="u_pass" placeholder="Password" required></div>
-          <button type="submit" class="btn btn-primary w-100">Login</button>
+          <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="u_name" placeholder="Username" required>
+            <label for="u_name">Username</label>
+          </div>
+          <div class="form-floating mb-3">
+            <input type="password" class="form-control" id="u_pass" placeholder="Password" required>
+            <label for="u_pass">Password</label>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">เข้าสู่ระบบ</button>
         </form>
-        <div class="d-flex justify-content-between mt-3">
-          <a href="#" class="small text-decoration-none" onclick="showPage('forgot-page')">ลืมรหัสผ่าน?</a>
-          <a href="#" class="small text-decoration-none" onclick="showPage('register-page')">ลงทะเบียนใหม่</a>
+        <div class="d-flex justify-content-between mt-4 small">
+          <a href="#" class="text-decoration-none text-muted" onclick="showPage('forgot-page')">ลืมรหัสผ่าน?</a>
+          <a href="#" class="text-decoration-none fw-bold text-primary" onclick="showPage('register-page')">ลงทะเบียนใหม่</a>
         </div>
+      </div>
+      <div class="text-center mt-4 text-muted small">
+        &copy; Faculty of Journalism and Mass Communication
       </div>
     </div>
   </div>
 
-  <div id="register-page" class="hidden row justify-content-center">
-     <div class="col-md-6 card p-4">
-        <h4>ลงทะเบียน</h4>
-        <div class="alert alert-info small"><i class="bi bi-info-circle"></i> โปรดใช้อีเมลจริง เพื่อรับลิงก์ยืนยันตัวตน</div>
-        <form id="regForm">
-           <div class="row g-2">
-             <div class="col-6 mb-2"><input type="text" name="reg_username" class="form-control" placeholder="Username" required></div>
-             <div class="col-6 mb-2"><input type="password" name="reg_password" class="form-control" placeholder="Password" required></div>
-           </div>
-           <input type="text" name="reg_name" class="form-control mb-2" placeholder="ชื่อ-นามสกุล (ภาษาไทย)" required>
+  <div id="register-page" class="hidden row justify-content-center align-items-center" style="min-height: 80vh;">
+     <div class="col-md-6 fade-in">
+        <div class="text-center mb-3">
+          <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="JC TU Logo" style="height: 50px;">
+        </div>
+        <div class="card p-4">
+           <h4 class="text-primary fw-bold mb-3"><i class="bi bi-person-plus"></i> ลงทะเบียน</h4>
+           <div class="alert alert-light border small text-muted"><i class="bi bi-info-circle-fill text-primary"></i> โปรดใช้อีเมลจริง เพื่อรับลิงก์ยืนยันตัวตน</div>
            
-           <div class="mb-2">
-             <label class="form-label me-2">เพศ:</label>
-             <div class="form-check form-check-inline">
-               <input class="form-check-input" type="radio" name="reg_gender" value="male" required> <label>ชาย</label>
-             </div>
-             <div class="form-check form-check-inline">
-               <input class="form-check-input" type="radio" name="reg_gender" value="female" required> <label>หญิง</label>
-             </div>
-           </div>
+           <form id="regForm">
+              <div class="row g-2">
+                <div class="col-6 mb-2">
+                   <label class="small text-muted">Username</label>
+                   <input type="text" name="reg_username" class="form-control" required>
+                </div>
+                <div class="col-6 mb-2">
+                   <label class="small text-muted">Password</label>
+                   <input type="password" name="reg_password" class="form-control" required>
+                </div>
+              </div>
+              
+              <div class="mb-2">
+                 <label class="small text-muted">ชื่อ-นามสกุล (ภาษาไทย)</label>
+                 <input type="text" name="reg_name" class="form-control" required>
+              </div>
+              
+              <div class="mb-3">
+                <label class="small text-muted d-block">เพศ</label>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="reg_gender" value="male" required> <label>ชาย</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="reg_gender" value="female" required> <label>หญิง</label>
+                </div>
+              </div>
 
-           <div class="row g-2 mb-2">
-             <div class="col-8"><input type="tel" name="reg_std_id" class="form-control" placeholder="รหัสนักศึกษา" required></div>
-             <div class="col-4"><input type="tel" name="reg_year" class="form-control" placeholder="ชั้นปี" required></div>
-           </div>
-           <input type="tel" name="reg_tel" class="form-control mb-2" placeholder="เบอร์โทรศัพท์" required>
-           <input type="email" name="reg_email" class="form-control mb-2" placeholder="Email" required>
-           
-           <button class="btn btn-success w-100">ยืนยันการสมัคร</button>
-           <div class="text-center mt-2"><a href="#" onclick="showPage('login-page')">กลับไป Login</a></div>
-        </form>
+              <div class="row g-2 mb-2">
+                <div class="col-8">
+                   <label class="small text-muted">รหัสนักศึกษา</label>
+                   <input type="tel" name="reg_std_id" class="form-control" required>
+                </div>
+                <div class="col-4">
+                   <label class="small text-muted">ชั้นปี</label>
+                   <input type="tel" name="reg_year" class="form-control" required>
+                </div>
+              </div>
+              
+              <div class="mb-2">
+                 <label class="small text-muted">เบอร์โทรศัพท์</label>
+                 <input type="tel" name="reg_tel" class="form-control" required>
+              </div>
+              <div class="mb-4">
+                 <label class="small text-muted">Email</label>
+                 <input type="email" name="reg_email" class="form-control" required>
+              </div>
+              
+              <button class="btn btn-primary w-100 py-2">ยืนยันการสมัคร</button>
+              <div class="text-center mt-3">
+                 <a href="#" class="text-decoration-none text-muted" onclick="showPage('login-page')"><i class="bi bi-arrow-left"></i> กลับไปหน้าเข้าสู่ระบบ</a>
+              </div>
+           </form>
+        </div>
      </div>
   </div>
 
-  <div id="forgot-page" class="row justify-content-center hidden">
-    <div class="col-md-5 card p-4">
-      <h4 class="text-center">ลืมรหัสผ่าน</h4>
+  <div id="forgot-page" class="row justify-content-center align-items-center hidden" style="min-height: 80vh;">
+    <div class="col-md-5 col-lg-4 card p-4 fade-in">
+      <div class="text-center mb-3">
+         <i class="bi bi-key display-4 text-warning"></i>
+         <h4 class="mt-2">ลืมรหัสผ่าน</h4>
+      </div>
       <form id="forgotForm">
-        <div class="mb-3"><input type="email" id="forgot_email" class="form-control" placeholder="อีเมลของคุณ" required></div>
-        <button type="submit" class="btn btn-warning w-100">ส่งลิงก์รีเซ็ต</button>
-        <div class="text-center mt-3"><a href="#" onclick="showPage('login-page')">กลับ</a></div>
+        <div class="mb-3">
+           <label class="form-label">กรอกอีเมลของคุณ</label>
+           <input type="email" id="forgot_email" class="form-control" placeholder="name@example.com" required>
+        </div>
+        <button type="submit" class="btn btn-warning w-100 text-white">ส่งลิงก์รีเซ็ต</button>
+        <div class="text-center mt-3"><a href="#" class="text-decoration-none" onclick="showPage('login-page')">ยกเลิก</a></div>
       </form>
     </div>
   </div>
 
-  <div id="reset-page" class="row justify-content-center hidden">
-    <div class="col-md-5 card p-4">
-      <h4 class="text-center">ตั้งรหัสผ่านใหม่</h4>
+  <div id="reset-page" class="row justify-content-center align-items-center hidden" style="min-height: 80vh;">
+    <div class="col-md-5 col-lg-4 card p-4 fade-in">
+      <h4 class="text-center mb-3 text-primary">ตั้งรหัสผ่านใหม่</h4>
       <form id="resetForm">
         <input type="hidden" id="reset_token">
-        <div class="mb-3"><input type="password" id="new_reset_pass" class="form-control" placeholder="รหัสใหม่" required></div>
-        <div class="mb-3"><input type="password" id="confirm_reset_pass" class="form-control" placeholder="ยืนยันรหัสใหม่" required></div>
-        <button type="submit" class="btn btn-primary w-100">บันทึก</button>
+        <div class="mb-3">
+           <label class="small text-muted">รหัสผ่านใหม่</label>
+           <input type="password" id="new_reset_pass" class="form-control" required>
+        </div>
+        <div class="mb-4">
+           <label class="small text-muted">ยืนยันรหัสผ่านใหม่</label>
+           <input type="password" id="confirm_reset_pass" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">บันทึกรหัสผ่าน</button>
       </form>
     </div>
   </div>
 
-  <div id="app-page" class="hidden">
-    <nav class="navbar navbar-light bg-white rounded shadow-sm px-4 mb-4 d-flex justify-content-between align-items-center">
-      <div>
-        <span class="navbar-brand h1 m-0">สวัสดี, <span id="disp_name"></span></span>
-        <span id="disp_gender" class="badge bg-secondary ms-1 small"></span>
+  <div id="app-page" class="hidden fade-in">
+    <nav class="navbar navbar-light px-4 mb-4 d-flex justify-content-between align-items-center sticky-top">
+      <div class="d-flex align-items-center">
+        <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="Logo" style="height: 40px; margin-right: 15px;">
+        <div class="lh-1">
+           <span class="d-block fw-bold text-primary">JC Request</span>
+           <span class="small text-muted">สวัสดี, <span id="disp_name"></span></span>
+        </div>
+        <span id="disp_gender" class="badge bg-light text-dark border ms-2 small d-none d-md-inline-block"></span>
         <span id="disp_role" class="badge bg-dark ms-1 small"></span>
       </div>
       <div>
-        <button class="btn btn-outline-secondary btn-sm me-2" onclick="showChangePassModal()">เปลี่ยนรหัส</button>
-        <button class="btn btn-danger btn-sm" onclick="logout()">Logout</button>
+        <button class="btn btn-light btn-sm me-1 text-muted border" onclick="showChangePassModal()" title="เปลี่ยนรหัส"><i class="bi bi-gear-fill"></i></button>
+        <button class="btn btn-outline-danger btn-sm" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
       </div>
     </nav>
 
-    <div id="admin-section" class="card p-4 mb-4 admin-panel hidden">
+    <div id="admin-section" class="card p-4 mb-4 admin-panel hidden shadow-sm">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4><i class="bi bi-shield-lock"></i> Admin Console</h4>
-        <div>
-           <span class="badge bg-primary rounded-pill" id="admin-count">0 รายการ</span>
-        </div>
+        <h5 class="text-primary m-0"><i class="bi bi-shield-lock-fill"></i> ผู้ดูแลระบบ (Admin Console)</h5>
+        <span class="badge bg-light text-dark border" id="admin-count">0 รายการ</span>
       </div>
 
       <div class="row g-2 mb-3">
         <div class="col-md-8">
           <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" id="admin-search" class="form-control" placeholder="ค้นหา Username, หัวข้อ, หรือ สถานะ..." onkeyup="filterAdminTable()">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" id="admin-search" class="form-control border-start-0 ps-0" placeholder="ค้นหา Username, หัวข้อ, หรือ สถานะ..." onkeyup="filterAdminTable()">
           </div>
         </div>
         <div class="col-md-4 text-end">
-          <button class="btn btn-warning btn-sm" onclick="promptBanUser()"><i class="bi bi-person-x"></i> Ban User</button>
+          <button class="btn btn-warning btn-sm text-white shadow-sm" onclick="promptBanUser()"><i class="bi bi-person-x"></i> Ban User</button>
         </div>
       </div>
 
@@ -165,39 +328,51 @@
       </div>
     </div>
 
-    <div id="change-pass-modal" class="card p-3 mb-4 border-warning hidden">
-      <h5>เปลี่ยนรหัสผ่าน</h5>
+    <div id="change-pass-modal" class="card p-4 mb-4 border border-warning hidden shadow-sm" style="background-color: #fffdf5;">
+      <h6 class="text-warning mb-3"><i class="bi bi-key"></i> เปลี่ยนรหัสผ่าน</h6>
       <form id="changePassForm">
-        <div class="row g-2">
-          <div class="col-md-4"><input type="password" name="old_pass" class="form-control form-control-sm" placeholder="รหัสเดิม" required></div>
-          <div class="col-md-4"><input type="password" name="new_pass" class="form-control form-control-sm" placeholder="รหัสใหม่" required></div>
-          <div class="col-md-4"><button type="submit" class="btn btn-warning btn-sm w-100">บันทึก</button></div>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-4">
+             <label class="small text-muted">รหัสเดิม</label>
+             <input type="password" name="old_pass" class="form-control form-control-sm" required>
+          </div>
+          <div class="col-md-4">
+             <label class="small text-muted">รหัสใหม่</label>
+             <input type="password" name="new_pass" class="form-control form-control-sm" required>
+          </div>
+          <div class="col-md-4">
+             <button type="submit" class="btn btn-warning btn-sm w-100 text-white">บันทึกการเปลี่ยนแปลง</button>
+          </div>
         </div>
       </form>
-      <div class="text-end mt-2"><a href="#" class="small text-muted" onclick="document.getElementById('change-pass-modal').classList.add('hidden')">ปิด</a></div>
+      <div class="text-end mt-2"><a href="#" class="small text-muted text-decoration-none" onclick="document.getElementById('change-pass-modal').classList.add('hidden')">ปิดหน้าต่างนี้</a></div>
     </div>
 
     <div class="row">
-      <div class="col-md-7">
-        <div class="alert alert-secondary mb-3">
-          <label class="fw-bold small mb-1"><i class="bi bi-magic"></i> เลือกแบบฟอร์มอัตโนมัติ (Template)</label>
-          <select id="template_select" class="form-select" onchange="applyTemplate()">
-            <option value="">-- ไม่ใช้ Template --</option>
+      <div class="col-lg-7 mb-4">
+        
+        <div class="card p-3 mb-3 border-primary border-opacity-25" style="background-color: #fbf8fc;">
+          <label class="fw-bold small mb-2 text-primary"><i class="bi bi-magic"></i> เลือกแบบฟอร์มอัตโนมัติ (Template)</label>
+          <select id="template_select" class="form-select form-select-sm" onchange="applyTemplate()">
+            <option value="">-- ไม่ใช้ Template (กรอกเอง) --</option>
           </select>
         </div>
 
-        <div class="card p-4 mb-4">
-          <h4 class="mb-3">แบบฟอร์มคำร้อง</h4>
+        <div class="card p-4">
+          <div class="d-flex align-items-center mb-3 border-bottom pb-2">
+             <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">1</div>
+             <h5 class="m-0 text-primary fw-bold">ข้อมูลพื้นฐาน</h5>
+          </div>
+          
           <form id="mainForm">
-            <div class="mb-3">
-              <label class="fw-bold text-primary">ตั้งชื่อไฟล์ PDF (ถ้าไม่ใส่ ระบบจะตั้งให้)</label>
-              <input type="text" name="custom_filename" class="form-control" placeholder="เช่น คำร้องขอสอบ_นาย ก.">
+            <div class="mb-4">
+              <label class="small fw-bold text-muted">ตั้งชื่อไฟล์ PDF (Optional)</label>
+              <input type="text" name="custom_filename" class="form-control bg-light" placeholder="เช่น คำร้องขอสอบ_นาย ก. (ถ้าไม่ใส่ระบบจะตั้งให้)">
             </div>
-            <hr>
-
-            <div class="row g-2 mb-3">
+            
+            <div class="row g-3 mb-3">
                <div class="col-md-12">
-                 <label>หลักสูตร</label>
+                 <label class="small text-muted">หลักสูตร</label>
                  <select name="program" class="form-select">
                    <option value="Thai">ภาคปกติ (Thai)</option>
                    <option value="BJM">โครงการพิเศษ (BJM)</option>
@@ -205,20 +380,43 @@
                </div>
             </div>
             
-            <div class="row g-2 mb-3">
-              <div class="col-md-4"><label>ชั้นปีที่</label><input type="tel" name="year" id="main_year" class="form-control" data-limit="1" data-type="number" required></div>
-              <div class="col-md-8"><label>เบอร์โทรศัพท์</label><input type="tel" name="tel" id="main_tel" class="form-control" data-limit="10" data-type="number" required></div>
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                  <label class="small text-muted">ชั้นปีที่</label>
+                  <input type="tel" name="year" id="main_year" class="form-control" data-limit="1" data-type="number" required>
+              </div>
+              <div class="col-md-8">
+                  <label class="small text-muted">เบอร์โทรศัพท์</label>
+                  <input type="tel" name="tel" id="main_tel" class="form-control" data-limit="10" data-type="number" required>
+              </div>
             </div>
             
-            <div class="mb-3"><label>สาขาวิชาเอกปัจจุบัน</label><select name="major" id="major_main_dropdown" class="form-select" required></select></div>
-            <div class="mb-3"><label>อาจารย์ที่ปรึกษา</label><select name="advisor" id="advisor_dropdown" class="form-select"></select></div>
-            <div class="mb-3"><label>Email</label><input type="email" name="email" id="main_email" class="form-control" data-limit="60"></div>
-            <div class="mb-3"><label>ที่อยู่ปัจจุบัน</label><textarea name="address" class="form-control no-resize" rows="2" data-limit="95"></textarea></div>
-            <hr>
+            <div class="mb-3">
+                <label class="small text-muted">สาขาวิชาเอกปัจจุบัน</label>
+                <select name="major" id="major_main_dropdown" class="form-select" required></select>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">อาจารย์ที่ปรึกษา</label>
+                <select name="advisor" id="advisor_dropdown" class="form-select"></select>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">Email</label>
+                <input type="email" name="email" id="main_email" class="form-control" data-limit="60">
+            </div>
+            <div class="mb-4">
+                <label class="small text-muted">ที่อยู่ปัจจุบัน</label>
+                <textarea name="address" class="form-control no-resize" rows="2" data-limit="95"></textarea>
+            </div>
             
-            <div class="mb-3"><label class="fw-bold">เรื่องที่ต้องการยื่นคำร้อง</label>
-              <select name="request_type" class="form-select" onchange="toggleFields(this.value)" required>
-                <option value="">-- เลือกหัวข้อ --</option>
+            <div class="d-flex align-items-center mb-3 border-bottom pb-2">
+             <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">2</div>
+             <h5 class="m-0 text-primary fw-bold">รายละเอียดคำร้อง</h5>
+            </div>
+            
+            <div class="mb-3">
+              <label class="fw-bold mb-2">เรื่องที่ต้องการยื่น</label>
+              <select name="request_type" class="form-select border-primary" onchange="toggleFields(this.value)" required>
+                <option value="">-- กรุณาเลือกหัวข้อ --</option>
                 <option value="t1">1. เลือกเรียนกลุ่มวิชา</option>
                 <option value="t2">2. ขอเปลี่ยนกลุ่มวิชา</option>
                 <option value="t3">3. ขอหนังสือรับรองความประพฤติ</option>
@@ -232,66 +430,77 @@
               </select>
             </div>
             
-            <div id="dynamic-fields" class="bg-light p-3 rounded mb-3 border">
-              <p class="text-muted text-center m-0" id="empty-msg">กรุณาเลือกหัวข้อด้านบน</p>
+            <div id="dynamic-fields" class="bg-light p-4 rounded-3 mb-4 border shadow-sm">
+              <p class="text-muted text-center m-0 small" id="empty-msg"><i class="bi bi-arrow-up-circle"></i> เลือกหัวข้อด้านบนเพื่อกรอกข้อมูลเพิ่มเติม</p>
               
               <div class="d-field hidden" data-topic="t1">
-                <label>วิชาเอกที่เลือกเรียน</label><select name="major_sel" class="form-select major-list"></select>
+                <label class="small text-muted">วิชาเอกที่เลือกเรียน</label><select name="major_sel" class="form-select major-list"></select>
               </div>
               <div class="d-field hidden" data-topic="t2">
-                <label>ย้ายจากเอก</label><select name="major_from" class="form-select major-list mb-2"></select>
-                <label>ไปยังเอก</label><select name="major_to" class="form-select major-list"></select>
+                <label class="small text-muted">ย้ายจากเอก</label><select name="major_from" class="form-select major-list mb-2"></select>
+                <label class="small text-muted">ไปยังเอก</label><select name="major_to" class="form-select major-list"></select>
               </div>
               <div class="d-field hidden" data-topic="t3">
-                <label>เสนออาจารย์</label><select name="prof_rec" class="form-select teacher-list mb-2"></select>
-                <label>จำนวนฉบับ</label><input type="tel" name="r_no" class="form-control" data-limit="1" data-type="number">
+                <label class="small text-muted">เสนออาจารย์</label><select name="prof_rec" class="form-select teacher-list mb-2"></select>
+                <label class="small text-muted">จำนวนฉบับ</label><input type="tel" name="r_no" class="form-control" data-limit="1" data-type="number">
               </div>
               <div class="d-field hidden" data-topic="t5">
                 <div class="row g-2">
-                   <div class="col-4"><label>เทอม</label><input name="reg_sem" class="form-control" data-limit="1" data-type="number"></div>
-                   <div class="col-4"><label>ปีการศึกษา</label><select name="reg_year" class="form-select year-list"></select></div>
-                   <div class="col-12"><label>เหตุผลการลาออก</label><input name="reg_reasson" class="form-control" data-limit="30"></div>
+                   <div class="col-4"><label class="small text-muted">เทอม</label><input name="reg_sem" class="form-control" data-limit="1" data-type="number"></div>
+                   <div class="col-4"><label class="small text-muted">ปีการศึกษา</label><select name="reg_year" class="form-select year-list"></select></div>
+                   <div class="col-12"><label class="small text-muted">เหตุผลการลาออก</label><input name="reg_reasson" class="form-control" data-limit="30"></div>
                 </div>
               </div>
               <div class="d-field hidden" data-topic="t6">
                  <div class="row g-2">
-                   <div class="col-6"><label>เทอมขอคืนสภาพ</label><input name="re_ad" class="form-control" data-limit="1" data-type="number"></div>
-                   <div class="col-6"><label>ปีขอคืนสภาพ</label><select name="re_ad_year" class="form-select year-list"></select></div>
+                   <div class="col-6"><label class="small text-muted">เทอมขอคืนสภาพ</label><input name="re_ad" class="form-control" data-limit="1" data-type="number"></div>
+                   <div class="col-6"><label class="small text-muted">ปีขอคืนสภาพ</label><select name="re_ad_year" class="form-select year-list"></select></div>
                  </div>
               </div>
               <div class="d-field hidden" data-topic="t7 t8">
-                 <label>สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-limit="90">
+                 <label class="small text-muted">สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-limit="90">
               </div>
               <div class="d-field hidden" data-topic="t9">
-                 <label>รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-limit="90">
+                 <label class="small text-muted">รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-limit="90">
               </div>
               <div class="d-field hidden" data-topic="t10">
-                 <label>เรื่องอื่นๆ ระบุ</label><input name="other" class="form-control no-resize" data-limit="90">
+                 <label class="small text-muted">เรื่องอื่นๆ ระบุ</label><input name="other" class="form-control no-resize" data-limit="90">
               </div>
             </div>
             
-            <div class="mb-3">
-              <label>เหตุผลประกอบ</label>
-              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="280"></textarea>
+            <div class="mb-4">
+              <label class="fw-bold mb-1">เหตุผลประกอบ</label>
+              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="205" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
             </div>
 
-            <div class="mb-3 text-center">
-              <label class="fw-bold">ลงชื่อ</label><br>
-              <canvas id="sig-canvas" width="300" height="120" class="border rounded"></canvas><br>
-              <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="clearSig()">ล้าง</button>
+            <div class="mb-4 text-center p-3 border rounded bg-white">
+              <label class="fw-bold mb-2 d-block">ลงชื่อนักศึกษา (เซ็นในกรอบ)</label>
+              <canvas id="sig-canvas" width="300" height="120"></canvas>
+              <div class="mt-2">
+                 <button type="button" class="btn btn-sm btn-light border" onclick="clearSig()"><i class="bi bi-eraser"></i> ล้างลายเซ็น</button>
+              </div>
               <input type="hidden" name="signature_data" id="signature_data">
             </div>
 
-            <button type="submit" class="btn btn-primary w-100">สร้าง PDF</button>
+            <button type="submit" class="btn btn-primary w-100 py-3 rounded-pill fw-bold shadow">
+               <i class="bi bi-file-earmark-plus"></i> สร้างและส่งคำร้อง (PDF)
+            </button>
           </form>
         </div>
       </div>
       
-      <div class="col-md-5">
-        <div class="card p-3">
-          <h5>สถานะและประวัติคำร้อง</h5>
-          <div id="history-list" class="list-group list-group-flush small">Loading...</div>
-          <button class="btn btn-sm btn-secondary mt-3" onclick="loadRequests()">รีเฟรชข้อมูล</button>
+      <div class="col-lg-5">
+        <div class="card p-3 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+             <h5 class="m-0 text-primary fw-bold"><i class="bi bi-clock-history"></i> ประวัติคำร้อง</h5>
+             <button class="btn btn-sm btn-outline-primary rounded-pill" onclick="loadRequests()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
+          </div>
+          
+          <div id="history-list" class="list-group list-group-flush small" style="max-height: 800px; overflow-y: auto;">
+             <div class="text-center text-muted py-5">
+                <div class="spinner-border text-light spinner-border-sm text-primary" role="status"></div> กำลังโหลด...
+             </div>
+          </div>
         </div>
       </div>
     </div>
@@ -358,10 +567,9 @@
       document.getElementById('reset_token').value = urlParams.token;
       showPage('reset-page');
     } else {
-        // --- ตรวจสอบ SESSION ก่อนแสดงหน้า Login ---
         const savedUser = checkSession();
         if (savedUser) {
-            setupAppUI(savedUser); // ถ้ามี Session ให้เข้าหน้าแอปเลย
+            setupAppUI(savedUser); 
         } else {
             showPage('login-page');
         }
@@ -369,7 +577,6 @@
     initInputConstraints();
   };
 
-  // ฟังก์ชันตั้งค่าหน้าจอเมื่อล็อกอินสำเร็จ
   function setupAppUI(user) {
     currentUser = user;
     document.getElementById('disp_name').innerText = user.name;
@@ -400,17 +607,17 @@
   function toggleLoad(s) { document.getElementById('loading').classList.toggle('hidden', !s); }
   
   function logout() { 
-      localStorage.removeItem(SESSION_KEY); // ลบ Session
+      localStorage.removeItem(SESSION_KEY); 
       location.reload(); 
   }
 
-  // --- LOGIN & REGISTER LOGIC ---
+  // --- LOGIC ---
   document.getElementById('loginForm').addEventListener('submit', e => {
     e.preventDefault(); toggleLoad(true);
     google.script.run.withSuccessHandler(res => {
       toggleLoad(false);
       if(res.status === 'success') {
-        saveSession(res); // บันทึก Session เมื่อ Login ผ่าน
+        saveSession(res);
         setupAppUI(res);
       } else alert(res.message);
     }).loginUser(document.getElementById('u_name').value, document.getElementById('u_pass').value);
@@ -448,7 +655,7 @@
     google.script.run.withSuccessHandler(res => {
       toggleLoad(false);
       if(res.status === 'success') {
-        if(confirm('สร้างสำเร็จ! เปิดเลยไหม?')) window.open(res.url);
+        if(confirm('✅ สร้างคำร้องสำเร็จ! ต้องการเปิดดู PDF เลยหรือไม่?')) window.open(res.url);
         loadRequests(); clearSig(); this.reset();
         document.getElementById('main_year').value = currentUser.year || '';
         document.getElementById('main_tel').value = currentUser.tel || '';
@@ -458,9 +665,10 @@
     }).withFailureHandler(e => { toggleLoad(false); alert(e); }).processForm(data, currentUser);
   });
 
-  // --- DASHBOARD & ADMIN LOGIC ---
   function loadRequests() {
     if(!currentUser) return;
+    document.getElementById('history-list').innerHTML = '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> กำลังโหลดข้อมูล...</div>';
+    
     google.script.run.withSuccessHandler(data => {
       renderHistory(data);
       if(currentUser.role === 'admin') {
@@ -472,36 +680,42 @@
 
   function renderHistory(list) {
     const el = document.getElementById('history-list');
-    if(!list.length) { el.innerHTML = '<div class="text-muted">ไม่มีประวัติ</div>'; return; }
+    if(!list.length) { 
+        el.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-inbox display-4 d-block mb-2" style="opacity:0.3"></i>ยังไม่มีประวัติคำร้อง</div>'; 
+        return; 
+    }
     
     el.innerHTML = list.map(i => {
-      let badge = `<span class="badge status-wait">รอ</span>`;
-      if(i.status === 'รับเรื่องแล้ว') badge = `<span class="badge status-received">รับเรื่องแล้ว</span>`;
-      if(i.status === 'เสร็จสิ้น') badge = `<span class="badge status-done">เสร็จสิ้น</span>`;
+      let badge = `<span class="badge status-wait rounded-pill"><i class="bi bi-hourglass-split"></i> รอ</span>`;
+      if(i.status === 'รับเรื่องแล้ว') badge = `<span class="badge status-received rounded-pill"><i class="bi bi-check2"></i> รับเรื่องแล้ว</span>`;
+      if(i.status === 'เสร็จสิ้น') badge = `<span class="badge status-done rounded-pill"><i class="bi bi-check-circle-fill"></i> เสร็จสิ้น</span>`;
 
-      let adminFileLink = i.adminFile ? `<div class="mt-2"><a href="${i.adminFile}" target="_blank" class="btn btn-success btn-sm w-100"><i class="bi bi-check-circle"></i> ดาวน์โหลดเอกสาร (เสร็จสิ้น)</a></div>` : '';
+      let adminFileLink = i.adminFile ? `<div class="mt-2"><a href="${i.adminFile}" target="_blank" class="btn btn-success btn-sm w-100 shadow-sm"><i class="bi bi-file-earmark-check"></i> ดาวน์โหลดเอกสาร (ฉบับสมบูรณ์)</a></div>` : '';
 
       return `
-        <div class="list-group-item py-2 history-item">
-          <div class="d-flex justify-content-between align-items-start">
+        <div class="list-group-item py-3 px-2 history-item border-bottom">
+          <div class="d-flex justify-content-between align-items-start mb-2">
             <div style="flex:1;">
-               <strong class="d-block text-primary text-truncate" style="max-width:180px;">${i.fileName}</strong>
-               <small class="text-muted">${i.timestamp} | ${i.type}</small>
+               <strong class="d-block text-dark text-truncate" style="max-width:180px;">${i.fileName}</strong>
+               <small class="text-muted"><i class="bi bi-calendar"></i> ${i.timestamp}</small>
             </div>
             ${badge}
           </div>
-          <div class="mt-1">
-             <a href="${i.pdfUrl}" target="_blank" class="small text-decoration-none"><i class="bi bi-file-earmark-pdf"></i> ต้นฉบับ</a>
-             ${i.studentFile ? ` | <a href="${i.studentFile}" target="_blank" class="small text-decoration-none text-info"><i class="bi bi-file-earmark-arrow-up"></i> ไฟล์ที่ส่งแล้ว</a>` : ''}
+          <div class="small bg-light p-2 rounded">
+             <i class="bi bi-tag-fill text-secondary"></i> ${i.type}
+          </div>
+          <div class="mt-2 d-flex gap-2">
+             <a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-file-pdf"></i> ต้นฉบับ</a>
+             ${i.studentFile ? `<a href="${i.studentFile}" target="_blank" class="btn btn-sm btn-outline-info flex-grow-1"><i class="bi bi-file-earmark-arrow-up"></i> ไฟล์แนบ</a>` : ''}
           </div>
           ${adminFileLink}
           <div class="mt-2 pt-2 border-top">
-             <button class="btn btn-outline-primary btn-sm w-100" style="font-size: 0.8rem;" onclick="triggerUpload('${i.fileId}')">
-               <i class="bi bi-upload"></i> อัปโหลดไฟล์ใหม่ / ส่งแบบฟอร์ม
+             <button class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="triggerUpload('${i.fileId}')">
+               <i class="bi bi-upload"></i> อัปโหลดไฟล์/ส่งงาน
              </button>
-             <div class="mt-1 d-flex justify-content-end">
-               <span class="badge bg-warning text-dark action-btn" onclick="renameItem('${i.fileId}')" style="cursor:pointer; margin-right:5px;">แก้ชื่อ</span>
-               <span class="badge bg-danger action-btn" onclick="deleteItem('${i.fileId}')" style="cursor:pointer;">ลบ</span>
+             <div class="d-flex justify-content-end gap-1">
+               <button class="btn btn-sm btn-light border text-warning" onclick="renameItem('${i.fileId}')" title="แก้ไขชื่อ"><i class="bi bi-pencil"></i></button>
+               <button class="btn btn-sm btn-light border text-danger" onclick="deleteItem('${i.fileId}')" title="ลบรายการ"><i class="bi bi-trash"></i></button>
              </div>
           </div>
         </div>`;
@@ -513,7 +727,7 @@
     document.getElementById('admin-count').innerText = `${list.length} รายการ`;
 
     if(list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">ไม่พบข้อมูล</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ไม่พบข้อมูลคำร้อง</td></tr>';
         return;
     }
 
@@ -525,19 +739,19 @@
         else if(i.status === 'เสร็จสิ้น') statusClass = 'bg-success text-white';
 
         return `
-      <tr>
-        <td class="text-nowrap">${i.timestamp}</td>
-        <td>${i.username}</td>
-        <td><span class="badge bg-light text-dark border">${topicName}</span></td>
+      <tr class="align-middle">
+        <td class="text-nowrap text-muted small">${i.timestamp}</td>
+        <td class="fw-bold text-primary">${i.username}</td>
+        <td><span class="badge bg-light text-dark border fw-normal">${topicName}</span></td>
         <td>
-            <a href="${i.pdfUrl}" target="_blank" class="text-decoration-none">
-                <i class="bi bi-file-pdf text-danger"></i> ${i.fileName.substring(0, 15)}...
+            <a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-light border">
+                <i class="bi bi-file-pdf text-danger"></i> PDF
             </a>
         </td>
         <td>
-          <select class="form-select form-select-sm badge ${statusClass}" 
-                  style="width:auto; cursor:pointer;" 
-                  onchange="changeStatus('${i.fileId}', this.value); this.className='form-select form-select-sm badge '+ (this.value==='รอ'?'bg-warning text-dark':(this.value==='รับเรื่องแล้ว'?'bg-info text-white':'bg-success text-white'))">
+          <select class="form-select form-select-sm badge ${statusClass} border-0" 
+                  style="width:auto; cursor:pointer; padding-right: 2rem;" 
+                  onchange="changeStatus('${i.fileId}', this.value); this.className='form-select form-select-sm border-0 badge '+ (this.value==='รอ'?'bg-warning text-dark':(this.value==='รับเรื่องแล้ว'?'bg-info text-white':'bg-success text-white'))">
             <option value="รอ" class="bg-white text-dark" ${i.status==='รอ'?'selected':''}>รอ</option>
             <option value="รับเรื่องแล้ว" class="bg-white text-dark" ${i.status==='รับเรื่องแล้ว'?'selected':''}>รับเรื่อง</option>
             <option value="เสร็จสิ้น" class="bg-white text-dark" ${i.status==='เสร็จสิ้น'?'selected':''}>เสร็จสิ้น</option>
@@ -555,6 +769,7 @@
     updateSortIcons();
   }
 
+  // --- Sorting & Filtering (Same Logic) ---
   function sortAdminTable(col) {
     if (currentSort.col === col) {
         currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
@@ -562,7 +777,6 @@
         currentSort.col = col;
         currentSort.order = 'asc';
     }
-
     const sortedList = [...adminDataList].sort((a, b) => {
         let valA, valB;
         if (col === 'timestamp') {
@@ -575,32 +789,24 @@
             valA = String(a[col] || '').toLowerCase();
             valB = String(b[col] || '').toLowerCase();
         }
-
         if (valA < valB) return currentSort.order === 'asc' ? -1 : 1;
         if (valA > valB) return currentSort.order === 'asc' ? 1 : -1;
         return 0;
     });
-    
     filterAdminTable(sortedList);
   }
 
   function filterAdminTable(sourceList = null) {
     let list = sourceList;
-    if (!sourceList) {
-         sortAdminTable(currentSort.col); 
-         return; 
-    }
-
+    if (!sourceList) { sortAdminTable(currentSort.col); return; }
     const term = document.getElementById('admin-search').value.toLowerCase().trim();
     const filtered = list.filter(item => {
         const topic = (TOPIC_MAP[item.type] || '').toLowerCase();
         const user = (item.username || '').toLowerCase();
         const status = (item.status || '').toLowerCase();
         const date = (item.timestamp || '').toLowerCase();
-        
         return user.includes(term) || topic.includes(term) || status.includes(term) || date.includes(term);
     });
-
     renderAdminTable(filtered);
   }
 
@@ -616,17 +822,14 @@
   function updateSortIcons() {
     document.querySelectorAll('.sort-icon').forEach(el => el.parentElement.className = 'sortable');
     const activeHeader = document.querySelector(`th[onclick="sortAdminTable('${currentSort.col}')"]`);
-    if(activeHeader) {
-        activeHeader.className = `sortable sort-${currentSort.order}`;
-    }
+    if(activeHeader) { activeHeader.className = `sortable sort-${currentSort.order}`; }
   }
 
-  // --- UPLOAD, UTILS & INIT ---
+  // --- Utils ---
   function triggerUpload(fileId) {
     currentUploadFileId = fileId;
     document.getElementById('file-input').click();
   }
-
   document.getElementById('file-input').addEventListener('change', function() {
     if (this.files.length === 0) return;
     const file = this.files[0];
@@ -641,11 +844,9 @@
     };
     reader.readAsDataURL(file);
   });
-
   function changeStatus(fileId, newStatus) {
     google.script.run.withSuccessHandler(msg => console.log(msg)).adminUpdateStatus(fileId, newStatus);
   }
-
   function promptBanUser() {
     const email = prompt("กรอก Email ที่ต้องการระงับการใช้งาน:");
     if(email) {
@@ -653,7 +854,6 @@
       google.script.run.withSuccessHandler(res => { toggleLoad(false); alert(res); }).adminBanUser(email);
     }
   }
-
   function renameItem(fileId) {
      const newName = prompt("กรุณาใส่ชื่อไฟล์ใหม่:");
      if(newName) {
@@ -665,7 +865,6 @@
        }).renameHistory(fileId, newName, currentUser.username);
      }
   }
-
   function deleteItem(fileId) {
      if(confirm("คุณต้องการลบรายการนี้ใช่หรือไม่?")) {
        toggleLoad(true);
@@ -697,16 +896,13 @@
        document.querySelector('input[name="custom_filename"]').value = "";
        return;
     }
-    
     const t = globalTemplates[idx];
     if (!t) return;
-
     const reqSelect = document.querySelector('select[name="request_type"]');
     reqSelect.value = t.topic; 
     toggleFields(t.topic);
     document.querySelector('textarea[name="reason_full"]').value = t.reason;
     document.querySelector('input[name="custom_filename"]').value = t.name + "_" + currentUser.name;
-
     let targetInputName = "";
     switch (t.topic) {
       case 't1': targetInputName = "major_sel"; break;     
@@ -718,7 +914,6 @@
       case 't9': targetInputName = "items"; break;         
       case 't10': targetInputName = "other"; break;        
     }
-
     if (targetInputName) {
       const input = document.querySelector(`[name="${targetInputName}"]`);
       if (input) { input.value = t.data; input.dispatchEvent(new Event('input')); }
@@ -730,11 +925,9 @@
     google.script.run.withSuccessHandler(d => {
       const tOpts = '<option value="">-- เลือกอาจารย์ --</option>' + d.teachers.map(t=>`<option value="${t}">${t}</option>`).join('');
       document.querySelectorAll('#advisor_dropdown, .teacher-list').forEach(el => el.innerHTML = tOpts);
-      
       const mOpts = '<option value="">-- เลือกสาขา --</option>' + d.majors.map(m=>`<option value="${m}">${m}</option>`).join('');
       document.getElementById('major_main_dropdown').innerHTML = mOpts;
       document.querySelectorAll('.major-list').forEach(el => el.innerHTML = mOpts);
-
       globalTemplates = d.templates || [];
       const tempOpts = '<option value="">-- ไม่ใช้ Template (กรอกเอง) --</option>' + 
                        globalTemplates.map((t, index) => `<option value="${index}">${t.name}</option>`).join('');
@@ -767,14 +960,11 @@
       const parent = input.parentNode;
       const existing = parent.querySelector('.char-count');
       if(existing) existing.remove();
-
       const limit = parseInt(input.getAttribute('data-limit'));
       const counterEl = document.createElement('div');
       counterEl.className = 'char-count';
       counterEl.innerText = `0 / ${limit}`;
-      
       input.insertAdjacentElement('afterend', counterEl);
-
       const update = () => {
          let val = input.value;
          if (input.getAttribute('data-type') === 'number') val = val.replace(/\D/g, '');
@@ -787,7 +977,6 @@
       input.addEventListener('input', update);
       if(input.value) update();
     });
-    
     const ys = document.querySelectorAll('.year-list');
     let opts = '<option value="">-- เลือกปี --</option>';
     for(let y=2560; y<=2570; y++) opts += `<option value="${y}">${y}</option>`;
