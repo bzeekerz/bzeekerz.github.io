@@ -15,7 +15,7 @@
   <style>
     /* --- JCTU Theme Variables --- */
     :root {
-      --jctu-primary: #76236C; 
+      --jctu-primary: #76236C; /* สีม่วงเม็ดมะปราง (โดยประมาณ) */
       --jctu-dark: #4a1243;
       --jctu-light: #f3e5f5;
       --jctu-bg-gradient: linear-gradient(135deg, #fdfbfd 0%, #f4ebf4 100%);
@@ -28,6 +28,7 @@
       min-height: 100vh;
     }
 
+    /* --- Overriding Bootstrap Colors to JCTU Purple --- */
     .text-primary { color: var(--jctu-primary) !important; }
     .bg-primary { background-color: var(--jctu-primary) !important; }
     .btn-primary {
@@ -51,6 +52,7 @@
       color: #fff;
     }
 
+    /* --- UI Components --- */
     .card { 
       border: none; 
       box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
@@ -85,37 +87,18 @@
     .hidden { display: none !important; }
     .no-resize { resize: none !important; }
     
-    /* --- NEW ENERGY BAR UI --- */
-    .energy-bar-container {
-      height: 6px;
-      background-color: #e9ecef;
-      border-radius: 3px;
-      margin-top: 8px;
-      overflow: hidden;
-      position: relative;
-    }
-    .energy-bar-fill {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #28a745, #ffc107, #dc3545); /* เขียว -> เหลือง -> แดง */
-      background-size: 200% 100%;
-      background-position: 0% 0%;
-      transition: width 0.3s ease, background-position 0.3s ease;
-    }
-    .pixel-count-text {
-      font-size: 0.75rem;
-      color: #6c757d;
-      text-align: right;
-      margin-top: 3px;
-      font-weight: 500;
-    }
+    /* Character Count */
+    .char-count { font-size: 0.75rem; color: #999; display: block; text-align: right; margin-top: 4px; }
+    .char-count.limit-reached { color: #dc3545; font-weight: 600; }
     
+    /* Loader */
     .loading-overlay { 
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
       background: rgba(255,255,255,0.85); z-index: 9999; 
       display: flex; flex-direction: column; justify-content: center; align-items: center; 
     }
     
+    /* Canvas */
     #sig-canvas { 
       background: #fcfcfc; 
       cursor: crosshair; 
@@ -124,16 +107,19 @@
       border-radius: 8px;
     }
     
+    /* Status Badges */
     .status-wait { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
     .status-received { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
     .status-done { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 
+    /* List Item */
     .history-item { 
       border-left: 4px solid transparent; 
       transition: bg 0.2s;
     }
     .history-item:hover { background-color: #f8f9fa; }
     
+    /* Admin Table Styles */
     .admin-panel { border-left: 5px solid var(--jctu-primary); }
     .sortable { cursor: pointer; user-select: none; position: relative; }
     .sortable:hover { background-color: #f1f1f1 !important; color: var(--jctu-primary); }
@@ -141,6 +127,7 @@
     .sort-asc .sort-icon::after { content: "▲"; color: var(--jctu-primary); }
     .sort-desc .sort-icon::after { content: "▼"; color: var(--jctu-primary); }
 
+    /* Animations */
     .fade-in { animation: fadeIn 0.4s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
@@ -414,11 +401,11 @@
             </div>
             <div class="mb-3">
                 <label class="small text-muted">Email</label>
-                <input type="email" name="email" id="main_email" class="form-control" data-limit="60" data-px="330">
+                <input type="email" name="email" id="main_email" class="form-control" data-limit="45">
             </div>
             <div class="mb-4">
                 <label class="small text-muted">ที่อยู่ปัจจุบัน</label>
-                <textarea name="address" class="form-control no-resize" rows="2" data-limit="95" data-px="540"></textarea>
+                <textarea name="address" class="form-control no-resize" rows="2" data-limit="70"></textarea>
             </div>
             
             <div class="d-flex align-items-center mb-3 border-bottom pb-2">
@@ -461,7 +448,7 @@
                 <div class="row g-2">
                    <div class="col-4"><label class="small text-muted">เทอม</label><input name="reg_sem" class="form-control" data-limit="1" data-type="number"></div>
                    <div class="col-4"><label class="small text-muted">ปีการศึกษา</label><select name="reg_year" class="form-select year-list"></select></div>
-                   <div class="col-12"><label class="small text-muted">เหตุผลการลาออก</label><input name="reg_reasson" class="form-control" data-limit="30" data-px="240"></div>
+                   <div class="col-12"><label class="small text-muted">เหตุผลการลาออก</label><input name="reg_reasson" class="form-control" data-limit="20"></div>
                 </div>
               </div>
               <div class="d-field hidden" data-topic="t6">
@@ -471,19 +458,19 @@
                  </div>
               </div>
               <div class="d-field hidden" data-topic="t7 t8">
-                 <label class="small text-muted">สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-limit="80" data-px="470">
+                 <label class="small text-muted">สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-limit="65">
               </div>
               <div class="d-field hidden" data-topic="t9">
-                 <label class="small text-muted">รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-limit="80" data-px="470">
+                 <label class="small text-muted">รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-limit="65">
               </div>
               <div class="d-field hidden" data-topic="t10">
-                 <label class="small text-muted">เรื่องอื่นๆ ระบุ</label><input name="other" class="form-control no-resize" data-limit="90" data-px="470">
+                 <label class="small text-muted">เรื่องอื่นๆ ระบุ</label><input name="other" class="form-control no-resize" data-limit="65">
               </div>
             </div>
             
             <div class="mb-4">
               <label class="fw-bold mb-1">เหตุผลประกอบ</label>
-              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="280" data-px="1550" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
+              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="210" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
             </div>
 
             <div class="mb-4 text-center p-3 border rounded bg-white">
@@ -527,8 +514,9 @@
   let adminDataList = [];
   let currentSort = { col: 'timestamp', order: 'desc' };
 
+  // --- 🔴 SESSION MANAGEMENT (จำค่าล็อกอิน 5 นาที) ---
   const SESSION_KEY = 'JC_FORM_SESSION';
-  const SESSION_DURATION = 5 * 60 * 1000; 
+  const SESSION_DURATION = 5 * 60 * 1000; // 5 นาที
 
   function saveSession(userData) {
     const sessionData = {
@@ -548,6 +536,7 @@
     }
     return session.user;
   }
+  // ----------------------------------------------------
 
   const TOPIC_MAP = {
       't1': 'เลือกเรียนกลุ่มวิชา',
@@ -622,6 +611,7 @@
       location.reload(); 
   }
 
+  // --- LOGIC ---
   document.getElementById('loginForm').addEventListener('submit', e => {
     e.preventDefault(); toggleLoad(true);
     google.script.run.withSuccessHandler(res => {
@@ -670,8 +660,7 @@
         document.getElementById('main_year').value = currentUser.year || '';
         document.getElementById('main_tel').value = currentUser.tel || '';
         document.getElementById('main_email').value = currentUser.email || '';
-        // Reset Bars
-        document.querySelectorAll('input, textarea').forEach(el => el.dispatchEvent(new Event('input')));
+        document.querySelectorAll('.char-count').forEach(el => el.innerText = `0 / ${el.innerText.split(' / ')[1]}`);
       } else alert(res.message);
     }).withFailureHandler(e => { toggleLoad(false); alert(e); }).processForm(data, currentUser);
   });
@@ -780,6 +769,7 @@
     updateSortIcons();
   }
 
+  // --- Sorting & Filtering (Same Logic) ---
   function sortAdminTable(col) {
     if (currentSort.col === col) {
         currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
@@ -835,6 +825,7 @@
     if(activeHeader) { activeHeader.className = `sortable sort-${currentSort.order}`; }
   }
 
+  // --- Utils ---
   function triggerUpload(fileId) {
     currentUploadFileId = fileId;
     document.getElementById('file-input').click();
@@ -962,91 +953,30 @@
   function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); document.getElementById('signature_data').value = ""; }
   function saveSig() { document.getElementById('signature_data').value = canvas.toDataURL('image/png'); }
 
-  // --- 🔥 NEW: CANVAS METRICS MEASUREMENT 🔥 ---
-  // นี่คือ "Way to be most correct" ที่สุด โดยการจำลองการวาดจริง
-  function getVisualPixelWidth(text) {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    ctx.font = "12px Sarabun"; // ต้องตรงกับฟอนต์ใน PDF (Scale อาจต้องจูนตาม DPI)
-    // 12px ใน Canvas อาจจะไม่เท่ากับ 1 unit ใน PDF เป๊ะๆ แต่ Ratio จะถูกต้องแน่นอน
-    return ctx.measureText(text).width;
-  }
+  function getVisualLen(t) { return t.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '').length; }
   
   function initInputConstraints() {
     document.querySelectorAll('[data-limit]').forEach(input => {
       const parent = input.parentNode;
       const existing = parent.querySelector('.char-count');
       if(existing) existing.remove();
-      const existingBar = parent.querySelector('.energy-bar-container');
-      if(existingBar) existingBar.remove();
-      const existingLabel = parent.querySelector('.pixel-count-text');
-      if(existingLabel) existingLabel.remove();
-
-      let limitPixels = 0;
-      let isPixelMode = false;
-
-      if (input.hasAttribute('data-px')) {
-         limitPixels = parseInt(input.getAttribute('data-px'));
-         isPixelMode = true;
-      } else {
-         // Fallback for fields without pixel limit in CSV
-         limitPixels = parseInt(input.getAttribute('data-limit')) * 7.5; // ใช้ 7.5 เป็นค่าเฉลี่ย
-      }
-      
-      const container = document.createElement('div');
-      
-      const barContainer = document.createElement('div');
-      barContainer.className = 'energy-bar-container';
-      
-      const barFill = document.createElement('div');
-      barFill.className = 'energy-bar-fill';
-      barContainer.appendChild(barFill);
-      
-      const textLabel = document.createElement('div');
-      textLabel.className = 'pixel-count-text';
-      textLabel.innerText = '0%';
-
-      container.appendChild(barContainer);
-      container.appendChild(textLabel);
-      input.insertAdjacentElement('afterend', container);
-
+      const limit = parseInt(input.getAttribute('data-limit'));
+      const counterEl = document.createElement('div');
+      counterEl.className = 'char-count';
+      counterEl.innerText = `0 / ${limit}`;
+      input.insertAdjacentElement('afterend', counterEl);
       const update = () => {
          let val = input.value;
-         if (input.getAttribute('data-type') === 'number') {
-            val = val.replace(/\D/g, '');
-            input.value = val;
-         }
-         
-         // 🔴 BLOCKING LOGIC: ใช้ Canvas วัดความกว้างจริง
-         while (getVisualPixelWidth(val) > limitPixels && val.length > 0) {
-            val = val.slice(0, -1);
-            input.value = val;
-         }
-
-         const currentPixels = getVisualPixelWidth(val);
-         let percent = (currentPixels / limitPixels) * 100;
-         
-         if (percent > 100) percent = 100;
-
-         barFill.style.width = `${percent}%`;
-         barFill.style.backgroundPosition = `${percent}% 0%`;
-
-         textLabel.innerText = `${Math.round(percent)}%`;
-         
-         if (currentPixels >= limitPixels) {
-             textLabel.style.color = '#dc3545';
-             barFill.style.backgroundColor = '#dc3545';
-             barFill.style.backgroundImage = 'none';
-         } else {
-             textLabel.style.color = '#6c757d';
-             barFill.style.backgroundImage = 'linear-gradient(90deg, #28a745, #ffc107, #dc3545)';
-         }
+         if (input.getAttribute('data-type') === 'number') val = val.replace(/\D/g, '');
+         while (getVisualLen(val) > limit) val = val.slice(0, -1);
+         input.value = val;
+         const len = getVisualLen(val);
+         counterEl.innerText = `${len} / ${limit}`;
+         counterEl.classList.toggle('limit-reached', len >= limit);
       };
-
       input.addEventListener('input', update);
       if(input.value) update();
     });
-
     const ys = document.querySelectorAll('.year-list');
     let opts = '<option value="">-- เลือกปี --</option>';
     for(let y=2560; y<=2570; y++) opts += `<option value="${y}">${y}</option>`;
