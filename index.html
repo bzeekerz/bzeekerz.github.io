@@ -188,7 +188,7 @@
               <div class="row g-2">
                 <div class="col-6 mb-2">
                    <label class="small text-muted">Username</label>
-                   <input type="text" name="reg_username" class="form-control" required>
+                   <input type="text" name="reg_username" class="form-control" data-limit="15" required>
                 </div>
                 <div class="col-6 mb-2">
                    <label class="small text-muted">Password</label>
@@ -198,7 +198,7 @@
               
               <div class="mb-2">
                  <label class="small text-muted">ชื่อ-นามสกุล (ภาษาไทย)</label>
-                 <input type="text" name="reg_name" class="form-control" required>
+                 <input type="text" name="reg_name" class="form-control" data-limit="20" required>
               </div>
               
               <div class="mb-3">
@@ -214,21 +214,21 @@
               <div class="row g-2 mb-2">
                 <div class="col-8">
                    <label class="small text-muted">รหัสนักศึกษา</label>
-                   <input type="tel" name="reg_std_id" class="form-control" required>
+                   <input type="tel" name="reg_std_id" class="form-control" data-limit="10" data-type="number" required>
                 </div>
                 <div class="col-4">
                    <label class="small text-muted">ชั้นปี</label>
-                   <input type="tel" name="reg_year" class="form-control" required>
+                   <input type="tel" name="reg_year" class="form-control" data-limit="1" data-type="number" required>
                 </div>
               </div>
               
               <div class="mb-2">
                  <label class="small text-muted">เบอร์โทรศัพท์</label>
-                 <input type="tel" name="reg_tel" class="form-control" required>
+                 <input type="tel" name="reg_tel" class="form-control" data-limit="10" data-type="number" required>
               </div>
               <div class="mb-4">
                  <label class="small text-muted">Email</label>
-                 <input type="email" name="reg_email" class="form-control" required>
+                 <input type="email" name="reg_email" class="form-control" data-limit="40" required>
               </div>
               
               <button class="btn btn-primary w-100 py-2">ยืนยันการสมัคร</button>
@@ -401,11 +401,11 @@
             </div>
             <div class="mb-3">
                 <label class="small text-muted">Email</label>
-                <input type="email" name="email" id="main_email" class="form-control" data-limit="45">
+                <input type="email" name="email" id="main_email" class="form-control" data-limit="40">
             </div>
             <div class="mb-4">
                 <label class="small text-muted">ที่อยู่ปัจจุบัน</label>
-                <textarea name="address" class="form-control no-resize" rows="2" data-limit="70"></textarea>
+                <textarea name="address" class="form-control no-resize" rows="2" data-limit="65"></textarea>
             </div>
             
             <div class="d-flex align-items-center mb-3 border-bottom pb-2">
@@ -458,19 +458,19 @@
                  </div>
               </div>
               <div class="d-field hidden" data-topic="t7 t8">
-                 <label class="small text-muted">สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-limit="65">
+                 <label class="small text-muted">สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-limit="55">
               </div>
               <div class="d-field hidden" data-topic="t9">
-                 <label class="small text-muted">รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-limit="65">
+                 <label class="small text-muted">รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-limit="55">
               </div>
               <div class="d-field hidden" data-topic="t10">
-                 <label class="small text-muted">เรื่องอื่นๆ ระบุ</label><input name="other" class="form-control no-resize" data-limit="65">
+                 <label class="small text-muted">เรื่องอื่นๆ ระบุ</label><input name="other" class="form-control no-resize" data-limit="60">
               </div>
             </div>
             
             <div class="mb-4">
               <label class="fw-bold mb-1">เหตุผลประกอบ</label>
-              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="210" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
+              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="195" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
             </div>
 
             <div class="mb-4 text-center p-3 border rounded bg-white">
