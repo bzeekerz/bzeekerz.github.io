@@ -130,6 +130,25 @@
     /* Animations */
     .fade-in { animation: fadeIn 0.4s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* 🔥 CSS สำหรับกล่อง MOTD (เพิ่มใหม่) 🔥 */
+    .motd-box {
+      background-color: #fffdf5;
+      border: 1px solid #ffeeba;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      color: #856404;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+      display: flex;
+      align-items: center;
+    }
+    .motd-box i {
+      font-size: 1.2rem;
+      margin-right: 10px;
+      color: #ffc107;
+    }
   </style>
 </head>
 <body>
@@ -151,6 +170,12 @@
         <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="JC TU Logo" class="logo-img">
         <h4 class="fw-bold mb-4" style="color: var(--jctu-primary);">ระบบคำร้องออนไลน์</h4>
       </div>
+
+      <div id="motd-container" class="motd-box fade-in hidden">
+        <i class="bi bi-megaphone-fill"></i>
+        <div id="motd-text"></div>
+      </div>
+
       <div class="card p-4 fade-in">
         <h5 class="text-center mb-4 text-muted">เข้าสู่ระบบ / Login</h5>
         <form id="loginForm">
@@ -188,7 +213,7 @@
               <div class="row g-2">
                 <div class="col-6 mb-2">
                    <label class="small text-muted">Username</label>
-                   <input type="text" name="reg_username" class="form-control" data-limit="15" required>
+                   <input type="text" name="reg_username" class="form-control" required>
                 </div>
                 <div class="col-6 mb-2">
                    <label class="small text-muted">Password</label>
@@ -198,7 +223,7 @@
               
               <div class="mb-2">
                  <label class="small text-muted">ชื่อ-นามสกุล (ภาษาไทย)</label>
-                 <input type="text" name="reg_name" class="form-control" data-limit="20" required>
+                 <input type="text" name="reg_name" class="form-control" required>
               </div>
               
               <div class="mb-3">
@@ -214,21 +239,21 @@
               <div class="row g-2 mb-2">
                 <div class="col-8">
                    <label class="small text-muted">รหัสนักศึกษา</label>
-                   <input type="tel" name="reg_std_id" class="form-control" data-limit="10" data-type="number" required>
+                   <input type="tel" name="reg_std_id" class="form-control" required>
                 </div>
                 <div class="col-4">
                    <label class="small text-muted">ชั้นปี</label>
-                   <input type="tel" name="reg_year" class="form-control" data-limit="1" data-type="number" required>
+                   <input type="tel" name="reg_year" class="form-control" required>
                 </div>
               </div>
               
               <div class="mb-2">
                  <label class="small text-muted">เบอร์โทรศัพท์</label>
-                 <input type="tel" name="reg_tel" class="form-control" data-limit="10" data-type="number" required>
+                 <input type="tel" name="reg_tel" class="form-control" required>
               </div>
               <div class="mb-4">
                  <label class="small text-muted">Email</label>
-                 <input type="email" name="reg_email" class="form-control" data-limit="40" required>
+                 <input type="email" name="reg_email" class="form-control" required>
               </div>
               
               <button class="btn btn-primary w-100 py-2">ยืนยันการสมัคร</button>
@@ -401,11 +426,11 @@
             </div>
             <div class="mb-3">
                 <label class="small text-muted">Email</label>
-                <input type="email" name="email" id="main_email" class="form-control" data-limit="40">
+                <input type="email" name="email" id="main_email" class="form-control" data-limit="60">
             </div>
             <div class="mb-4">
                 <label class="small text-muted">ที่อยู่ปัจจุบัน</label>
-                <textarea name="address" class="form-control no-resize" rows="2" data-limit="65"></textarea>
+                <textarea name="address" class="form-control no-resize" rows="2" data-limit="95"></textarea>
             </div>
             
             <div class="d-flex align-items-center mb-3 border-bottom pb-2">
@@ -448,7 +473,7 @@
                 <div class="row g-2">
                    <div class="col-4"><label class="small text-muted">เทอม</label><input name="reg_sem" class="form-control" data-limit="1" data-type="number"></div>
                    <div class="col-4"><label class="small text-muted">ปีการศึกษา</label><select name="reg_year" class="form-select year-list"></select></div>
-                   <div class="col-12"><label class="small text-muted">เหตุผลการลาออก</label><input name="reg_reasson" class="form-control" data-limit="20"></div>
+                   <div class="col-12"><label class="small text-muted">เหตุผลการลาออก</label><input name="reg_reasson" class="form-control" data-limit="30"></div>
                 </div>
               </div>
               <div class="d-field hidden" data-topic="t6">
@@ -458,19 +483,19 @@
                  </div>
               </div>
               <div class="d-field hidden" data-topic="t7 t8">
-                 <label class="small text-muted">สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-limit="55">
+                 <label class="small text-muted">สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-limit="90">
               </div>
               <div class="d-field hidden" data-topic="t9">
-                 <label class="small text-muted">รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-limit="55">
+                 <label class="small text-muted">รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-limit="90">
               </div>
               <div class="d-field hidden" data-topic="t10">
-                 <label class="small text-muted">เรื่องอื่นๆ ระบุ</label><input name="other" class="form-control no-resize" data-limit="60">
+                 <label class="small text-muted">เรื่องอื่นๆ ระบุ</label><input name="other" class="form-control no-resize" data-limit="90">
               </div>
             </div>
             
             <div class="mb-4">
               <label class="fw-bold mb-1">เหตุผลประกอบ</label>
-              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="195" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
+              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="280" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
             </div>
 
             <div class="mb-4 text-center p-3 border rounded bg-white">
@@ -556,6 +581,8 @@
   const serverStatus = "<?= serverStatus ?>";
 
   window.onload = function() {
+    loadMOTD(); // 🔥 เรียกฟังก์ชัน MOTD เมื่อโหลดหน้าเว็บ 🔥
+
     if (serverMsg && serverMsg !== 'undefined') {
       const alertBox = document.getElementById('server-alert');
       alertBox.className = `alert alert-${serverStatus === 'success' ? 'success' : 'danger'}`;
@@ -576,6 +603,16 @@
     }
     initInputConstraints();
   };
+
+  // 🔥 ฟังก์ชันโหลด MOTD (เพิ่มใหม่) 🔥
+  function loadMOTD() {
+    google.script.run.withSuccessHandler(msg => {
+      if (msg && msg.trim() !== "") {
+        document.getElementById('motd-text').innerText = msg;
+        document.getElementById('motd-container').classList.remove('hidden');
+      }
+    }).getMOTD();
+  }
 
   function setupAppUI(user) {
     currentUser = user;
