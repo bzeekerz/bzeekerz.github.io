@@ -183,14 +183,14 @@ function processForm(formData, userInfo) {
     }
 
     let fullText = formData.reason_full || "";
-    // REDUCED: 40 -> 30
-    let res_1 = truncate(fullText, 30);
+    // REDUCED -30%: 40 -> 25
+    let res_1 = truncate(fullText, 25);
     fullText = fullText.substring(res_1.length);
-    // REDUCED: 120 -> 90
-    let res_2 = truncate(fullText, 90);
+    // REDUCED -30%: 120 -> 85
+    let res_2 = truncate(fullText, 85);
     fullText = fullText.substring(res_2.length);
-    // REDUCED: 120 -> 90
-    let res_3 = truncate(fullText, 90);
+    // REDUCED -30%: 120 -> 85 (Total ~195)
+    let res_3 = truncate(fullText, 85);
 
     let reqType = formData.request_type;
     const val = (topic, value) => (reqType === topic || (Array.isArray(topic) && topic.includes(reqType))) ? value : "";
@@ -202,40 +202,40 @@ function processForm(formData, userInfo) {
     replace('Thai', formData.program === 'Thai' ? tick : "");
     for(let i=1; i<=10; i++) replace(`t${i}`, (reqType === `t${i}`) ? tick : "");
 
-    // REDUCED: 30 -> 20
+    // REDUCED -30%: 30 -> 20
     replace('name', truncate(userInfo.name, 20));
     replace('std_id', truncate(userInfo.std_id, 10)); // Fixed
     replace('Year', truncate(formData.year, 1)); // Fixed
     replace('advisor', formData.advisor);
-    // REDUCED: 30 -> 20
+    // REDUCED -30%: 30 -> 20
     replace('major', truncate(formData.major, 20)); 
-    // REDUCED: 95 -> 70
-    replace('address', truncate(formData.address, 70));
+    // REDUCED -30%: 95 -> 65
+    replace('address', truncate(formData.address, 65));
     replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 10)); // Fixed
-    // REDUCED: 60 -> 45
-    replace('email', truncate(formData.email, 45));
+    // REDUCED -30%: 60 -> 40
+    replace('email', truncate(formData.email, 40));
     
     let specificData = "";
-    // REDUCED: 40 -> 30
-    specificData += truncate(val('t1', formData.major_sel), 30);
-    // REDUCED: 40 -> 30
-    specificData += truncate(val('t2', formData.major_from), 30) + " " + truncate(val('t2', formData.major_to), 30);
-    // REDUCED: 30 -> 20
+    // REDUCED -30%: 40 -> 25
+    specificData += truncate(val('t1', formData.major_sel), 25);
+    // REDUCED -30%: 40 -> 25
+    specificData += truncate(val('t2', formData.major_from), 25) + " " + truncate(val('t2', formData.major_to), 25);
+    // REDUCED -30%: 30 -> 20
     specificData += truncate(val('t3', formData.prof_rec), 20) + " (" + truncate(val('t3', formData.r_no), 1) + ")";
-    // REDUCED: 30 -> 20 (reg_reasson)
+    // REDUCED -30%: 30 -> 20 (reg_reasson)
     specificData += truncate(val('t5', formData.reg_sem), 1) + "/" + truncate(val('t5', formData.reg_year), 4) + " " + truncate(val('t5', formData.reg_reasson), 20);
     specificData += truncate(val('t6', formData.re_ad), 1) + "/" + truncate(val('t6', formData.re_ad_year), 4);
-    // REDUCED: 80 -> 60
-    specificData += truncate(val(['t7', 't8'], formData.location), 60);
-    // REDUCED: 80 -> 60
-    specificData += truncate(val('t9', formData.items), 60);
-    // REDUCED: 90 -> 65
-    specificData += truncate(val('t10', formData.other), 65);
+    // REDUCED -30%: 80 -> 55
+    specificData += truncate(val(['t7', 't8'], formData.location), 55);
+    // REDUCED -30%: 80 -> 55
+    specificData += truncate(val('t9', formData.items), 55);
+    // REDUCED -30%: 90 -> 60
+    specificData += truncate(val('t10', formData.other), 60);
 
     // Applying same reductions to individual replacements
-    replace('major_sel',  truncate(val('t1', formData.major_sel), 30));
-    replace('major_from', truncate(val('t2', formData.major_from), 30));
-    replace('major_to',   truncate(val('t2', formData.major_to), 30));
+    replace('major_sel',  truncate(val('t1', formData.major_sel), 25));
+    replace('major_from', truncate(val('t2', formData.major_from), 25));
+    replace('major_to',   truncate(val('t2', formData.major_to), 25));
     replace('prof_rec',   truncate(val('t3', formData.prof_rec), 20));
     replace('r_no',       truncate(val('t3', formData.r_no), 1));
     replace('reg_sem',    truncate(val('t5', formData.reg_sem), 1));
@@ -243,9 +243,9 @@ function processForm(formData, userInfo) {
     replace('reg_reasson',truncate(val('t5', formData.reg_reasson), 20));
     replace('re_ad',      truncate(val('t6', formData.re_ad), 1));
     replace('re_ad_year', truncate(val('t6', formData.re_ad_year), 4));
-    replace('location',   truncate(val(['t7', 't8'], formData.location), 60));
-    replace('items',      truncate(val('t9', formData.items), 60));
-    replace('other',      truncate(val('t10', formData.other), 65));
+    replace('location',   truncate(val(['t7', 't8'], formData.location), 55));
+    replace('items',      truncate(val('t9', formData.items), 55));
+    replace('other',      truncate(val('t10', formData.other), 60));
 
     replace('res_1', res_1);
     replace('res_2', res_2);
