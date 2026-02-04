@@ -43,6 +43,20 @@ function sendEmail(to, subject, body) {
   } catch(e) { console.log("Email Error: " + e.toString()); }
 }
 
+// 🔥 ฟังก์ชันใหม่สำหรับดึงข้อความ MOTD 🔥
+function getMOTD() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('MOTD');
+    // ถ้าไม่มี Sheet นี้ให้ส่งค่าว่างกลับไป
+    if (!sheet) return "";
+    // อ่านค่าจากช่อง A1
+    return sheet.getRange(1, 1).getValue(); 
+  } catch (e) {
+    return "";
+  }
+}
+
 // --- USER MANAGEMENT ---
 function loginUser(username, password) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -166,8 +180,6 @@ function changePassword(user, oldPass, newPass) {
   return { status: 'error', message: 'รหัสเดิมผิด' };
 }
 
-// --- MAIN FUNCTIONALITIES ---
-
 function processForm(formData, userInfo) {
   try {
     const destFolder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
@@ -183,14 +195,11 @@ function processForm(formData, userInfo) {
     }
 
     let fullText = formData.reason_full || "";
-    // REDUCED -30%: 40 -> 25
-    let res_1 = truncate(fullText, 25);
+    let res_1 = truncate(fullText, 40);
     fullText = fullText.substring(res_1.length);
-    // REDUCED -30%: 120 -> 85
-    let res_2 = truncate(fullText, 85);
+    let res_2 = truncate(fullText, 120);
     fullText = fullText.substring(res_2.length);
-    // REDUCED -30%: 120 -> 85 (Total ~195)
-    let res_3 = truncate(fullText, 85);
+    let res_3 = truncate(fullText, 120);
 
     let reqType = formData.request_type;
     const val = (topic, value) => (reqType === topic || (Array.isArray(topic) && topic.includes(reqType))) ? value : "";
@@ -202,50 +211,37 @@ function processForm(formData, userInfo) {
     replace('Thai', formData.program === 'Thai' ? tick : "");
     for(let i=1; i<=10; i++) replace(`t${i}`, (reqType === `t${i}`) ? tick : "");
 
-    // REDUCED -30%: 30 -> 20
-    replace('name', truncate(userInfo.name, 20));
-    replace('std_id', truncate(userInfo.std_id, 10)); // Fixed
-    replace('Year', truncate(formData.year, 1)); // Fixed
+    replace('name', truncate(userInfo.name, 30));
+    replace('std_id', truncate(userInfo.std_id, 10));
+    replace('Year', truncate(formData.year, 1));
     replace('advisor', formData.advisor);
-    // REDUCED -30%: 30 -> 20
-    replace('major', truncate(formData.major, 20)); 
-    // REDUCED -30%: 95 -> 65
-    replace('address', truncate(formData.address, 65));
-    replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 10)); // Fixed
-    // REDUCED -30%: 60 -> 40
-    replace('email', truncate(formData.email, 40));
-    
+    replace('major', truncate(formData.major, 30)); 
+    replace('address', truncate(formData.address, 95));
+    replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 10));
+    replace('email', truncate(formData.email, 60));
     let specificData = "";
-    // REDUCED -30%: 40 -> 25
-    specificData += truncate(val('t1', formData.major_sel), 25);
-    // REDUCED -30%: 40 -> 25
-    specificData += truncate(val('t2', formData.major_from), 25) + " " + truncate(val('t2', formData.major_to), 25);
-    // REDUCED -30%: 30 -> 20
-    specificData += truncate(val('t3', formData.prof_rec), 20) + " (" + truncate(val('t3', formData.r_no), 1) + ")";
-    // REDUCED -30%: 30 -> 20 (reg_reasson)
-    specificData += truncate(val('t5', formData.reg_sem), 1) + "/" + truncate(val('t5', formData.reg_year), 4) + " " + truncate(val('t5', formData.reg_reasson), 20);
+    specificData += truncate(val('t1', formData.major_sel), 40);
+    specificData += truncate(val('t2', formData.major_from), 40) + " " + truncate(val('t2', formData.major_to), 40);
+    specificData += truncate(val('t3', formData.prof_rec), 30) + " (" + truncate(val('t3', formData.r_no), 1) + ")";
+    specificData += truncate(val('t5', formData.reg_sem), 1) + "/" + truncate(val('t5', formData.reg_year), 4) + " " + truncate(val('t5', formData.reg_reasson), 30);
     specificData += truncate(val('t6', formData.re_ad), 1) + "/" + truncate(val('t6', formData.re_ad_year), 4);
-    // REDUCED -30%: 80 -> 55
-    specificData += truncate(val(['t7', 't8'], formData.location), 55);
-    // REDUCED -30%: 80 -> 55
-    specificData += truncate(val('t9', formData.items), 55);
-    // REDUCED -30%: 90 -> 60
-    specificData += truncate(val('t10', formData.other), 60);
+    specificData += truncate(val(['t7', 't8'], formData.location), 80);
+    specificData += truncate(val('t9', formData.items), 80);
+    specificData += truncate(val('t10', formData.other), 90);
 
-    // Applying same reductions to individual replacements
-    replace('major_sel',  truncate(val('t1', formData.major_sel), 25));
-    replace('major_from', truncate(val('t2', formData.major_from), 25));
-    replace('major_to',   truncate(val('t2', formData.major_to), 25));
-    replace('prof_rec',   truncate(val('t3', formData.prof_rec), 20));
+    replace('major_sel',  truncate(val('t1', formData.major_sel), 40));
+    replace('major_from', truncate(val('t2', formData.major_from), 40));
+    replace('major_to',   truncate(val('t2', formData.major_to), 40));
+    replace('prof_rec',   truncate(val('t3', formData.prof_rec), 30));
     replace('r_no',       truncate(val('t3', formData.r_no), 1));
     replace('reg_sem',    truncate(val('t5', formData.reg_sem), 1));
     replace('reg_year',   truncate(val('t5', formData.reg_year), 4));
-    replace('reg_reasson',truncate(val('t5', formData.reg_reasson), 20));
+    replace('reg_reasson',truncate(val('t5', formData.reg_reasson), 30));
     replace('re_ad',      truncate(val('t6', formData.re_ad), 1));
     replace('re_ad_year', truncate(val('t6', formData.re_ad_year), 4));
-    replace('location',   truncate(val(['t7', 't8'], formData.location), 55));
-    replace('items',      truncate(val('t9', formData.items), 55));
-    replace('other',      truncate(val('t10', formData.other), 60));
+    replace('location',   truncate(val(['t7', 't8'], formData.location), 80));
+    replace('items',      truncate(val('t9', formData.items), 80));
+    replace('other',      truncate(val('t10', formData.other), 90));
 
     replace('res_1', res_1);
     replace('res_2', res_2);
@@ -275,10 +271,8 @@ function processForm(formData, userInfo) {
       formData.advisor, formData.email, formData.address, specificData, formData.reason_full,
       'รอ', '', '' 
     ]);
-    
-    // ===============================================
-    // 🔥 ส่วนที่เพิ่ม: ส่งแจ้งเตือน LINE หา Admin 🔥
-    // ===============================================
+
+    // แจ้งเตือน LINE
     try {
         const topicMap = {
           't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
@@ -292,16 +286,14 @@ function processForm(formData, userInfo) {
                         `👤 ชื่อ: ${userInfo.name} (${userInfo.std_id})\n` +
                         `📝 เรื่อง: ${topicName}\n` +
                         `📂 PDF: ${pdfUrl}`;
-        sendLinePushMessage(lineMsg); // เรียกฟังก์ชันส่งไลน์
+        sendLinePushMessage(lineMsg);
 
     } catch(err) {
         console.log("LINE Alert Error: " + err);
     }
-    // ===============================================
 
     return { status: 'success', url: pdfUrl };
-  } catch (e) { return { status: 'error', message: 'Error: ' + e.toString() };
-  }
+  } catch (e) { return { status: 'error', message: 'Error: ' + e.toString() }; }
 }
 
 function getRequestsData(user) {
@@ -338,7 +330,6 @@ function getRequestsData(user) {
         return null;
     }
   }).filter(item => item !== null);
-
   if (user.role !== 'admin') {
     requests = requests.filter(r => r.username === user.username);
   }
@@ -359,7 +350,6 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
     const folder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
     const file = folder.createFile(blob);
     const fileUrl = file.getUrl();
-
     if (sheet.getLastColumn() < 19) sheet.insertColumnsAfter(sheet.getLastColumn(), 19 - sheet.getLastColumn());
 
     if (uploaderRole === 'admin') {
@@ -488,10 +478,6 @@ function getTemplateData() {
   return { majors, teachers, templates };
 }
 
-// ==========================================
-//      ส่วนแจ้งเตือน LINE (Config_Line)
-// ==========================================
-
 function sendLinePushMessage(message) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -529,37 +515,27 @@ function sendLinePushMessage(message) {
   }
 }
 
-// ==========================================
-//      ส่วนรับ Webhook (ส่ง ID เข้าอีเมล)
-// ==========================================
-
 function doPost(e) {
   try {
-    // 1. รับข้อมูลจาก LINE
     var json = JSON.parse(e.postData.contents);
     if (json.events.length === 0) return;
 
     var event = json.events[0];
     var msg = event.message.text || "";
-    // 2. ดึง ID (ไม่ว่าจะ User หรือ Group)
     var type = event.source.type;
-    // 'user' หรือ 'group'
     var id = "";
     if (type === "group") {
       id = event.source.groupId;
-    // <--- นี่คือสิ่งที่คุณอยากได้
     } else {
       id = event.source.userId;
     }
 
-    // 3. ถ้าพิมพ์คำว่า "check" ให้ส่งอีเมลทันที!
     if (msg.toLowerCase().includes("check")) { 
        MailApp.sendEmail({
-         to: "nitichan@tu.ac.th", // <--- 🔴 แก้เป็นอีเมลของคุณ ตรงนี้!!!
+         to: "nitichan@tu.ac.th",
          subject: "📌 ได้ Group ID แล้วครับ!",
          htmlBody: "<h3>ข้อมูลจาก LINE (" + type + ")</h3>" +
                    "<p><b>Group ID / User ID คือ:</b></p>" +
-          
                    "<h2>" + id + "</h2>" +
                    "<hr>" +
                    "<p>ก๊อปปี้รหัสนี้ไปใส่ในตัวแปร <b>ADMIN_USER_ID</b> ในไฟล์ Code.gs ได้เลยครับ</p>"
@@ -567,14 +543,14 @@ function doPost(e) {
     }
 
   } catch (error) {
-    // ถ้ามี Error ก็ให้ส่งเมลบอก (จะได้รู้ว่าพังตรงไหน)
     MailApp.sendEmail({
-       to: "nitichan@tu.ac.th", // <--- 🔴 แก้เป็นอีเมลของคุณ ตรงนี้!!!
+       to: "nitichan@tu.ac.th",
        subject: "❌ ระบบ Error",
        body: "Error: " + error.toString()
     });
   }
 }
+
 function replyLineMessage(replyToken, id, typeText, token) {
   var url = "https://api.line.me/v2/bot/message/reply";
   var payload = JSON.stringify({
@@ -596,7 +572,5 @@ function replyLineMessage(replyToken, id, typeText, token) {
 
 function testPushSystem() {
   console.log("🚀 กำลังทดสอบส่งข้อความ...");
-  
-  // ส่งข้อความทดสอบที่มีตัวหนังสือจริงๆ
   sendLinePushMessage("🟢 ทดสอบระบบ: การเชื่อมต่อสำเร็จ! (จาก Admin)");
 }
