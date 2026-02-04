@@ -57,7 +57,6 @@ function loginUser(username, password) {
   const data = userSheet.getDataRange().getValues();
   const inputHash = hashPassword(password);
   const user = data.find(row => row[0] == username && row[1] == inputHash);
-
   if (user) {
     if (String(user[9]).toUpperCase() !== 'TRUE') {
       return { status: 'error', message: 'กรุณายืนยันตัวตนทาง Email ก่อน' };
@@ -67,7 +66,6 @@ function loginUser(username, password) {
     let status = 'active';
     if (user.length > 12) role = user[12] || 'user';
     if (user.length > 13) status = user[13] || 'active';
-
     if (String(status).toLowerCase() === 'banned') {
       return { status: 'error', message: 'บัญชีของคุณถูกระงับการใช้งาน' };
     }
@@ -184,72 +182,70 @@ function processForm(formData, userInfo) {
       replaceTextWithImage(firstSlide, '{{signature}}', formData.signature_data);
     }
 
-    // --- Font Metrics Truncate Logic ---
-    // ใช้ค่า Pixel จาก CSV (270, 640, 640)
-    
     let fullText = formData.reason_full || "";
-    
-    let res_1 = truncate(fullText, 270); 
+    // REDUCED: 40 -> 30
+    let res_1 = truncate(fullText, 30);
     fullText = fullText.substring(res_1.length);
-    
-    let res_2 = truncate(fullText, 640); 
+    // REDUCED: 120 -> 90
+    let res_2 = truncate(fullText, 90);
     fullText = fullText.substring(res_2.length);
-    
-    let res_3 = truncate(fullText, 640);
+    // REDUCED: 120 -> 90
+    let res_3 = truncate(fullText, 90);
 
     let reqType = formData.request_type;
     const val = (topic, value) => (reqType === topic || (Array.isArray(topic) && topic.includes(reqType))) ? value : "";
     const replace = (key, value) => slide.replaceAllText(`{{${key}}}`, value || " ");
     const tick = "✓";
-    
     replace('male', userInfo.gender === 'male' ? tick : "");
     replace('female', userInfo.gender === 'female' ? tick : "");
     replace('BJM', formData.program === 'BJM' ? tick : "");
     replace('Thai', formData.program === 'Thai' ? tick : "");
     for(let i=1; i<=10; i++) replace(`t${i}`, (reqType === `t${i}`) ? tick : "");
 
-    // --- MAPPING PIXEL LIMITS ---
-    replace('name', truncate(userInfo.name, 175));
-    replace('std_id', truncate(userInfo.std_id, 80));
-    replace('Year', truncate(formData.year, 20));
+    // REDUCED: 30 -> 20
+    replace('name', truncate(userInfo.name, 20));
+    replace('std_id', truncate(userInfo.std_id, 10)); // Fixed
+    replace('Year', truncate(formData.year, 1)); // Fixed
     replace('advisor', formData.advisor);
-    replace('major', truncate(formData.major, 210)); 
-    replace('address', truncate(formData.address, 540));
-    replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 80));
-    replace('email', truncate(formData.email, 330));
+    // REDUCED: 30 -> 20
+    replace('major', truncate(formData.major, 20)); 
+    // REDUCED: 95 -> 70
+    replace('address', truncate(formData.address, 70));
+    replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 10)); // Fixed
+    // REDUCED: 60 -> 45
+    replace('email', truncate(formData.email, 45));
     
-    // Topic Specific Data
-    replace('major_sel',  truncate(val('t1', formData.major_sel), 280));
-    
-    replace('major_from', truncate(val('t2', formData.major_from), 280));
-    replace('major_to',   truncate(val('t2', formData.major_to), 280));
-    
-    replace('prof_rec',   truncate(val('t3', formData.prof_rec), 210));
-    replace('r_no',       truncate(val('t3', formData.r_no), 20));
-    
-    replace('reg_sem',    truncate(val('t5', formData.reg_sem), 20));
-    replace('reg_year',   truncate(val('t5', formData.reg_year), 40));
-    replace('reg_reasson',truncate(val('t5', formData.reg_reasson), 240));
-    
-    replace('re_ad',      truncate(val('t6', formData.re_ad), 20));
-    replace('re_ad_year', truncate(val('t6', formData.re_ad_year), 40));
-    
-    replace('location',   truncate(val(['t7', 't8'], formData.location), 470));
-    
-    replace('items',      truncate(val('t9', formData.items), 470));
-    
-    replace('other',      truncate(val('t10', formData.other), 470));
-
-    // Combine logic for log file (using approximate full text)
     let specificData = "";
-    specificData += truncate(val('t1', formData.major_sel), 280);
-    specificData += truncate(val('t2', formData.major_from), 280) + " " + truncate(val('t2', formData.major_to), 280);
-    specificData += truncate(val('t3', formData.prof_rec), 210) + " (" + truncate(val('t3', formData.r_no), 20) + ")";
-    specificData += truncate(val('t5', formData.reg_sem), 20) + "/" + truncate(val('t5', formData.reg_year), 40) + " " + truncate(val('t5', formData.reg_reasson), 240);
-    specificData += truncate(val('t6', formData.re_ad), 20) + "/" + truncate(val('t6', formData.re_ad_year), 40);
-    specificData += truncate(val(['t7', 't8'], formData.location), 470);
-    specificData += truncate(val('t9', formData.items), 470);
-    specificData += truncate(val('t10', formData.other), 470);
+    // REDUCED: 40 -> 30
+    specificData += truncate(val('t1', formData.major_sel), 30);
+    // REDUCED: 40 -> 30
+    specificData += truncate(val('t2', formData.major_from), 30) + " " + truncate(val('t2', formData.major_to), 30);
+    // REDUCED: 30 -> 20
+    specificData += truncate(val('t3', formData.prof_rec), 20) + " (" + truncate(val('t3', formData.r_no), 1) + ")";
+    // REDUCED: 30 -> 20 (reg_reasson)
+    specificData += truncate(val('t5', formData.reg_sem), 1) + "/" + truncate(val('t5', formData.reg_year), 4) + " " + truncate(val('t5', formData.reg_reasson), 20);
+    specificData += truncate(val('t6', formData.re_ad), 1) + "/" + truncate(val('t6', formData.re_ad_year), 4);
+    // REDUCED: 80 -> 60
+    specificData += truncate(val(['t7', 't8'], formData.location), 60);
+    // REDUCED: 80 -> 60
+    specificData += truncate(val('t9', formData.items), 60);
+    // REDUCED: 90 -> 65
+    specificData += truncate(val('t10', formData.other), 65);
+
+    // Applying same reductions to individual replacements
+    replace('major_sel',  truncate(val('t1', formData.major_sel), 30));
+    replace('major_from', truncate(val('t2', formData.major_from), 30));
+    replace('major_to',   truncate(val('t2', formData.major_to), 30));
+    replace('prof_rec',   truncate(val('t3', formData.prof_rec), 20));
+    replace('r_no',       truncate(val('t3', formData.r_no), 1));
+    replace('reg_sem',    truncate(val('t5', formData.reg_sem), 1));
+    replace('reg_year',   truncate(val('t5', formData.reg_year), 4));
+    replace('reg_reasson',truncate(val('t5', formData.reg_reasson), 20));
+    replace('re_ad',      truncate(val('t6', formData.re_ad), 1));
+    replace('re_ad_year', truncate(val('t6', formData.re_ad_year), 4));
+    replace('location',   truncate(val(['t7', 't8'], formData.location), 60));
+    replace('items',      truncate(val('t9', formData.items), 60));
+    replace('other',      truncate(val('t10', formData.other), 65));
 
     replace('res_1', res_1);
     replace('res_2', res_2);
@@ -280,7 +276,9 @@ function processForm(formData, userInfo) {
       'รอ', '', '' 
     ]);
     
-    // แจ้งเตือน LINE
+    // ===============================================
+    // 🔥 ส่วนที่เพิ่ม: ส่งแจ้งเตือน LINE หา Admin 🔥
+    // ===============================================
     try {
         const topicMap = {
           't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
@@ -294,11 +292,12 @@ function processForm(formData, userInfo) {
                         `👤 ชื่อ: ${userInfo.name} (${userInfo.std_id})\n` +
                         `📝 เรื่อง: ${topicName}\n` +
                         `📂 PDF: ${pdfUrl}`;
-        sendLinePushMessage(lineMsg); 
+        sendLinePushMessage(lineMsg); // เรียกฟังก์ชันส่งไลน์
 
     } catch(err) {
         console.log("LINE Alert Error: " + err);
     }
+    // ===============================================
 
     return { status: 'success', url: pdfUrl };
   } catch (e) { return { status: 'error', message: 'Error: ' + e.toString() };
@@ -360,6 +359,7 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
     const folder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
     const file = folder.createFile(blob);
     const fileUrl = file.getUrl();
+
     if (sheet.getLastColumn() < 19) sheet.insertColumnsAfter(sheet.getLastColumn(), 19 - sheet.getLastColumn());
 
     if (uploaderRole === 'admin') {
@@ -435,57 +435,16 @@ function renameHistory(fileId, newName, username) {
   return { status: 'error', message: 'Error' };
 }
 
-// --- NEW GLYPH METRICS SIMULATION (BACKEND) ---
-// พยายามจำลอง Sarabun ให้แม่นที่สุดเท่าที่จะทำได้แบบ Manual
-function truncate(text, maxPixels) {
+function truncate(text, limit) {
   if (!text) return "";
   text = String(text);
-  
-  const charWidths = {
-    'default': 7.5, // ค่าเฉลี่ยทั่วไป
-    ' ': 4, // Space
-    
-    // ภาษาไทย (กว้างปกติ)
-    'ก': 8, 'ข': 9, 'ฃ': 9, 'ค': 8, 'ฅ': 8, 'ฆ': 8, 'ง': 9, 'จ': 8, 'ฉ': 9, 
-    'ช': 9, 'ซ': 9, 'ฌ': 9, 'ญ': 9, 'ฎ': 9, 'ฏ': 9, 'ฐ': 9, 'ฑ': 9, 'ฒ': 9,
-    'ณ': 10, 'ด': 8, 'ต': 8, 'ถ': 8, 'ท': 8, 'ธ': 8, 'น': 9, 'บ': 9, 'ป': 9,
-    'ผ': 9, 'ฝ': 9, 'พ': 9, 'ฟ': 9, 'ภ': 9, 'ม': 10, 'ย': 8, 'ร': 6, 'ล': 8,
-    'ว': 8, 'ศ': 9, 'ษ': 9, 'ส': 9, 'ห': 9, 'ฬ': 9, 'อ': 9, 'ฮ': 9,
-    
-    // สระลอย/วรรณยุกต์ (Zero Width ในทางปฏิบัติสำหรับ Line breaking)
-    'ั': 0, 'ิ': 0, 'ี': 0, 'ึ': 0, 'ื': 0, 'ุ': 0, 'ู': 0, 'ฺ': 0,
-    '็': 0, '่': 0, '้': 0, '๊': 0, '๋': 0, '์': 0, 'ํ': 0,
-    
-    // สระ/เครื่องหมายที่กินที่
-    'ฯ': 6, 'ะ': 6, 'า': 6, 'ำ': 9, 'เ': 6, 'แ': 9, 'โ': 7, 'ใ': 7, 'ไ': 7, 'ๅ': 6, 'ๆ': 6,
-    
-    // English (Variable Width)
-    'a': 6, 'b': 7, 'c': 6, 'd': 7, 'e': 6, 'f': 4, 'g': 7, 'h': 7, 'i': 3, 'j': 3,
-    'k': 6, 'l': 3, 'm': 10, 'n': 7, 'o': 7, 'p': 7, 'q': 7, 'r': 4, 's': 6, 't': 4,
-    'u': 7, 'v': 6, 'w': 9, 'x': 6, 'y': 6, 'z': 6,
-    
-    // CAPS
-    'A': 8, 'B': 8, 'C': 8, 'D': 9, 'E': 7, 'F': 7, 'G': 9, 'H': 9, 'I': 3, 'J': 6,
-    'K': 8, 'L': 6, 'M': 10, 'N': 9, 'O': 9, 'P': 8, 'Q': 9, 'R': 8, 'S': 7, 'T': 7,
-    'U': 9, 'V': 8, 'W': 11, 'X': 8, 'Y': 8, 'Z': 7,
-    
-    // Numbers
-    '0': 7, '1': 4, '2': 7, '3': 7, '4': 7, '5': 7, '6': 7, '7': 7, '8': 7, '9': 7
-  };
-  
-  let currentWidth = 0;
-  let result = "";
-  
+  const getVisualLen = (t) => t.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '').length;
+  let current = "";
   for (let char of text) {
-    let w = charWidths[char] !== undefined ? charWidths[char] : charWidths['default'];
-    // เช็คสระบนล่างอีกทีเผื่อหลุด Map
-    if (char.match(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/)) w = 0;
-
-    if (currentWidth + w > maxPixels) break;
-    currentWidth += w;
-    result += char;
+    if (getVisualLen(current + char) > limit) break;
+    current += char;
   }
-  return result;
+  return current;
 }
 
 function replaceTextWithImage(slide, searchText, base64Data) {
@@ -529,7 +488,9 @@ function getTemplateData() {
   return { majors, teachers, templates };
 }
 
-// --- LINE NOTIFY / WEBHOOK ---
+// ==========================================
+//      ส่วนแจ้งเตือน LINE (Config_Line)
+// ==========================================
 
 function sendLinePushMessage(message) {
   try {
@@ -568,27 +529,37 @@ function sendLinePushMessage(message) {
   }
 }
 
+// ==========================================
+//      ส่วนรับ Webhook (ส่ง ID เข้าอีเมล)
+// ==========================================
+
 function doPost(e) {
   try {
+    // 1. รับข้อมูลจาก LINE
     var json = JSON.parse(e.postData.contents);
     if (json.events.length === 0) return;
 
     var event = json.events[0];
     var msg = event.message.text || "";
+    // 2. ดึง ID (ไม่ว่าจะ User หรือ Group)
     var type = event.source.type;
+    // 'user' หรือ 'group'
     var id = "";
     if (type === "group") {
       id = event.source.groupId;
+    // <--- นี่คือสิ่งที่คุณอยากได้
     } else {
       id = event.source.userId;
     }
 
+    // 3. ถ้าพิมพ์คำว่า "check" ให้ส่งอีเมลทันที!
     if (msg.toLowerCase().includes("check")) { 
        MailApp.sendEmail({
-         to: "nitichan@tu.ac.th", 
+         to: "nitichan@tu.ac.th", // <--- 🔴 แก้เป็นอีเมลของคุณ ตรงนี้!!!
          subject: "📌 ได้ Group ID แล้วครับ!",
          htmlBody: "<h3>ข้อมูลจาก LINE (" + type + ")</h3>" +
                    "<p><b>Group ID / User ID คือ:</b></p>" +
+          
                    "<h2>" + id + "</h2>" +
                    "<hr>" +
                    "<p>ก๊อปปี้รหัสนี้ไปใส่ในตัวแปร <b>ADMIN_USER_ID</b> ในไฟล์ Code.gs ได้เลยครับ</p>"
@@ -596,8 +567,9 @@ function doPost(e) {
     }
 
   } catch (error) {
+    // ถ้ามี Error ก็ให้ส่งเมลบอก (จะได้รู้ว่าพังตรงไหน)
     MailApp.sendEmail({
-       to: "nitichan@tu.ac.th", 
+       to: "nitichan@tu.ac.th", // <--- 🔴 แก้เป็นอีเมลของคุณ ตรงนี้!!!
        subject: "❌ ระบบ Error",
        body: "Error: " + error.toString()
     });
@@ -620,4 +592,11 @@ function replyLineMessage(replyToken, id, typeText, token) {
     },
     "payload": payload
   });
+}
+
+function testPushSystem() {
+  console.log("🚀 กำลังทดสอบส่งข้อความ...");
+  
+  // ส่งข้อความทดสอบที่มีตัวหนังสือจริงๆ
+  sendLinePushMessage("🟢 ทดสอบระบบ: การเชื่อมต่อสำเร็จ! (จาก Admin)");
 }
