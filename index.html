@@ -227,10 +227,12 @@
                    <input type="password" name="reg_password" class="form-control" required>
                 </div>
               </div>
+              
               <div class="mb-2">
                  <label class="small text-muted">ชื่อ-นามสกุล (ภาษาไทย)</label>
-                 <input type="text" name="reg_name" class="form-control" required>
+                 <input type="text" name="reg_name" class="form-control" data-limit="30" required>
               </div>
+              
               <div class="mb-3">
                 <label class="small text-muted d-block">เพศ</label>
                 <div class="form-check form-check-inline">
@@ -240,24 +242,27 @@
                   <input class="form-check-input" type="radio" name="reg_gender" value="female" required> <label>หญิง</label>
                 </div>
               </div>
+
               <div class="row g-2 mb-2">
                 <div class="col-8">
                    <label class="small text-muted">รหัสนักศึกษา</label>
-                   <input type="tel" name="reg_std_id" class="form-control" required>
+                   <input type="tel" name="reg_std_id" class="form-control" data-limit="10" data-type="number" required>
                 </div>
                 <div class="col-4">
                    <label class="small text-muted">ชั้นปี</label>
-                   <input type="tel" name="reg_year" class="form-control" required>
+                   <input type="tel" name="reg_year" class="form-control" data-limit="1" data-type="number" required>
                 </div>
               </div>
+              
               <div class="mb-2">
                  <label class="small text-muted">เบอร์โทรศัพท์</label>
-                 <input type="tel" name="reg_tel" class="form-control" required>
+                 <input type="tel" name="reg_tel" class="form-control" data-limit="10" data-type="number" required>
               </div>
               <div class="mb-4">
                  <label class="small text-muted">Email</label>
-                 <input type="email" name="reg_email" class="form-control" required>
+                 <input type="email" name="reg_email" class="form-control" data-limit="60" required>
               </div>
+              
               <button class="btn btn-primary w-100 py-2">ยืนยันการสมัคร</button>
               <div class="text-center mt-3">
                  <a href="#" class="text-decoration-none text-muted" onclick="showPage('login-page')"><i class="bi bi-arrow-left"></i> กลับไปหน้าเข้าสู่ระบบ</a>
