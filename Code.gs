@@ -6,7 +6,7 @@ const DESTINATION_FOLDER_ID = '1u1LpLsCDaUgwWYJIXn5L9D_a1sBhKoU7';
 // --- ROUTING & INIT ---
 function doGet(e) {
   const template = HtmlService.createTemplateFromFile('index');
-  template.urlParams = JSON.stringify(e.parameter || {}); 
+  template.urlParams = JSON.stringify(e.parameter || {});
   template.serverMessage = ""; 
   template.serverStatus = "";
 
@@ -43,6 +43,20 @@ function sendEmail(to, subject, body) {
   } catch(e) { console.log("Email Error: " + e.toString()); }
 }
 
+// 🔥 ฟังก์ชันใหม่สำหรับดึงข้อความ MOTD 🔥
+function getMOTD() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('MOTD');
+    // ถ้าไม่มี Sheet นี้ให้ส่งค่าว่างกลับไป
+    if (!sheet) return "";
+    // อ่านค่าจากช่อง A1
+    return sheet.getRange(1, 1).getValue(); 
+  } catch (e) {
+    return "";
+  }
+}
+
 // --- USER MANAGEMENT ---
 function loginUser(username, password) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -56,9 +70,7 @@ function loginUser(username, password) {
 
   const data = userSheet.getDataRange().getValues();
   const inputHash = hashPassword(password);
-  
   const user = data.find(row => row[0] == username && row[1] == inputHash);
-  
   if (user) {
     if (String(user[9]).toUpperCase() !== 'TRUE') {
       return { status: 'error', message: 'กรุณายืนยันตัวตนทาง Email ก่อน' };
@@ -66,10 +78,8 @@ function loginUser(username, password) {
     
     let role = 'user';
     let status = 'active';
-    
     if (user.length > 12) role = user[12] || 'user';
     if (user.length > 13) status = user[13] || 'active';
-
     if (String(status).toLowerCase() === 'banned') {
       return { status: 'error', message: 'บัญชีของคุณถูกระงับการใช้งาน' };
     }
@@ -111,7 +121,6 @@ function registerUser(formObject) {
     formObject.reg_email, "'" + formObject.reg_tel, formObject.reg_year, formObject.reg_gender,
     verifyToken, 'FALSE', '', '', 'user', 'active'
   ]);
-  
   sendEmail(formObject.reg_email, 'ยืนยันการสมัคร', `<p><a href="${verifyLink}">คลิกยืนยันตัวตน</a></p>`);
   return { status: 'success', message: 'สมัครสำเร็จ! กรุณาตรวจสอบ Email' };
 }
@@ -122,7 +131,7 @@ function verifyUserToken(token) {
   const data = userSheet.getDataRange().getValues();
   const rowIndex = data.findIndex(row => row[8] === token);
   if (rowIndex > 0) {
-    userSheet.getRange(rowIndex + 1, 9).setValue(''); 
+    userSheet.getRange(rowIndex + 1, 9).setValue('');
     userSheet.getRange(rowIndex + 1, 10).setValue('TRUE'); 
     return { status: 'success', message: 'ยืนยันตัวตนสำเร็จ!' };
   }
@@ -171,8 +180,6 @@ function changePassword(user, oldPass, newPass) {
   return { status: 'error', message: 'รหัสเดิมผิด' };
 }
 
-// --- MAIN FUNCTIONALITIES ---
-
 function processForm(formData, userInfo) {
   try {
     const destFolder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
@@ -194,11 +201,10 @@ function processForm(formData, userInfo) {
     fullText = fullText.substring(res_2.length);
     let res_3 = truncate(fullText, 120);
 
-    let reqType = formData.request_type; 
+    let reqType = formData.request_type;
     const val = (topic, value) => (reqType === topic || (Array.isArray(topic) && topic.includes(reqType))) ? value : "";
     const replace = (key, value) => slide.replaceAllText(`{{${key}}}`, value || " ");
     const tick = "✓";
-
     replace('male', userInfo.gender === 'male' ? tick : "");
     replace('female', userInfo.gender === 'female' ? tick : "");
     replace('BJM', formData.program === 'BJM' ? tick : "");
@@ -213,7 +219,6 @@ function processForm(formData, userInfo) {
     replace('address', truncate(formData.address, 95));
     replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 10));
     replace('email', truncate(formData.email, 60));
-
     let specificData = "";
     specificData += truncate(val('t1', formData.major_sel), 40);
     specificData += truncate(val('t2', formData.major_from), 40) + " " + truncate(val('t2', formData.major_to), 40);
@@ -252,8 +257,8 @@ function processForm(formData, userInfo) {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     let logSheet = ss.getSheetByName('Logs');
     if(!logSheet) { 
-      logSheet = ss.insertSheet('Logs'); 
-      logSheet.appendRow(['Timestamp', 'Username', 'File Name', 'Type', 'URL', 'File ID', 'Program', 'Gender', 'Year', 'Tel', 'Major', 'Advisor', 'Email', 'Address', 'Topic Data', 'Reason', 'Status', 'Student_File', 'Admin_File']); 
+      logSheet = ss.insertSheet('Logs');
+      logSheet.appendRow(['Timestamp', 'Username', 'File Name', 'Type', 'URL', 'File ID', 'Program', 'Gender', 'Year', 'Tel', 'Major', 'Advisor', 'Email', 'Address', 'Topic Data', 'Reason', 'Status', 'Student_File', 'Admin_File']);
     }
     
     if (logSheet.getLastColumn() < 19) {
@@ -267,9 +272,7 @@ function processForm(formData, userInfo) {
       'รอ', '', '' 
     ]);
 
-    // ===============================================
-    // 🔥 ส่วนที่เพิ่ม: ส่งแจ้งเตือน LINE หา Admin 🔥
-    // ===============================================
+    // แจ้งเตือน LINE
     try {
         const topicMap = {
           't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
@@ -279,18 +282,15 @@ function processForm(formData, userInfo) {
           't9': 'ขอยืมอุปกรณ์', 't10': 'อื่นๆ'
         };
         const topicName = topicMap[reqType] || reqType;
-        
         const lineMsg = `🔔 มีคำร้องใหม่!\n` +
                         `👤 ชื่อ: ${userInfo.name} (${userInfo.std_id})\n` +
                         `📝 เรื่อง: ${topicName}\n` +
                         `📂 PDF: ${pdfUrl}`;
-                        
-        sendLinePushMessage(lineMsg); // เรียกฟังก์ชันส่งไลน์
+        sendLinePushMessage(lineMsg);
 
     } catch(err) {
         console.log("LINE Alert Error: " + err);
     }
-    // ===============================================
 
     return { status: 'success', url: pdfUrl };
   } catch (e) { return { status: 'error', message: 'Error: ' + e.toString() }; }
@@ -304,8 +304,7 @@ function getRequestsData(user) {
   if(!sheet || sheet.getLastRow() < 2) return [];
   
   const lastCol = sheet.getLastColumn();
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues(); 
-  
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
   let requests = data.map(r => {
     try {
         let ts = r[0];
@@ -315,7 +314,7 @@ function getRequestsData(user) {
         } else {
             timeStr = String(ts || "-");
         }
-        
+     
         return {
             timestamp: timeStr,
             username: String(r[1] || ""),
@@ -331,7 +330,6 @@ function getRequestsData(user) {
         return null;
     }
   }).filter(item => item !== null);
-
   if (user.role !== 'admin') {
     requests = requests.filter(r => r.username === user.username);
   }
@@ -345,7 +343,6 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
     const sheet = ss.getSheetByName('Logs');
     const data = sheet.getDataRange().getValues();
     const rowIndex = data.findIndex(row => row[5] === relatedFileId);
-    
     if (rowIndex <= 0) return { status: 'error', message: 'ไม่พบรายการ' };
 
     const splitBase = base64Data.split(',');
@@ -353,7 +350,6 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
     const folder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
     const file = folder.createFile(blob);
     const fileUrl = file.getUrl();
-
     if (sheet.getLastColumn() < 19) sheet.insertColumnsAfter(sheet.getLastColumn(), 19 - sheet.getLastColumn());
 
     if (uploaderRole === 'admin') {
@@ -397,7 +393,6 @@ function adminBanUser(targetEmail) {
 
 function deleteHistory(fileId, username) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  
   const userSheet = ss.getSheetByName('Users');
   const userRows = userSheet.getDataRange().getValues();
   const currentUser = userRows.find(row => row[0] === username);
@@ -405,11 +400,10 @@ function deleteHistory(fileId, username) {
 
   const sheet = ss.getSheetByName('Logs');
   const data = sheet.getDataRange().getValues();
-  
   const rowIndex = data.findIndex(r => r[5] === fileId && (r[1] === username || isAdmin));
-
   if(rowIndex > 0) { 
-      try { DriveApp.getFileById(fileId).setTrashed(true); } catch(e){}
+      try { DriveApp.getFileById(fileId).setTrashed(true);
+      } catch(e){}
       sheet.deleteRow(rowIndex + 1); 
       return { status: 'success', message: 'ลบเรียบร้อย' };
   }
@@ -423,7 +417,8 @@ function renameHistory(fileId, newName, username) {
   const data = sheet.getDataRange().getValues();
   const rowIndex = data.findIndex(r => r[5] === fileId && r[1] === username);
   if(rowIndex > 0) {
-      try { DriveApp.getFileById(fileId).setName(newName); } catch(e){}
+      try { DriveApp.getFileById(fileId).setName(newName);
+      } catch(e){}
       sheet.getRange(rowIndex + 1, 3).setValue(newName);
       return { status: 'success', message: 'แก้ไขเรียบร้อย' };
   }
@@ -452,7 +447,7 @@ function replaceTextWithImage(slide, searchText, base64Data) {
     if (shape.getText().asString().includes(searchText)) {
       slide.insertImage(blob, shape.getLeft(), shape.getTop(), shape.getWidth(), shape.getHeight());
       shape.remove();
-      break; 
+      break;
     }
   }
 }
@@ -460,7 +455,8 @@ function replaceTextWithImage(slide, searchText, base64Data) {
 function getTemplateData() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let configSheet = ss.getSheetByName('Config');
-  if (!configSheet) { configSheet = ss.insertSheet('Config'); configSheet.appendRow(['Major', 'Advisor']); }
+  if (!configSheet) { configSheet = ss.insertSheet('Config');
+  configSheet.appendRow(['Major', 'Advisor']); }
 
   let majors = [], teachers = [];
   if (configSheet.getLastRow() > 1) {
@@ -482,10 +478,6 @@ function getTemplateData() {
   return { majors, teachers, templates };
 }
 
-// ==========================================
-//      ส่วนแจ้งเตือน LINE (Config_Line)
-// ==========================================
-
 function sendLinePushMessage(message) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -497,8 +489,7 @@ function sendLinePushMessage(message) {
     }
 
     var accessToken = configSheet.getRange("B1").getValue();
-    var targetId = configSheet.getRange("B2").getValue(); 
-
+    var targetId = configSheet.getRange("B2").getValue();
     if (!accessToken || !targetId) {
       console.log("❌ ข้อมูล Token (B1) หรือ ID (B2) ไม่ครบ");
       return;
@@ -509,7 +500,6 @@ function sendLinePushMessage(message) {
       "to": targetId,
       "messages": [{ "type": "text", "text": message }]
     });
-
     UrlFetchApp.fetch(url, {
       "method": "post",
       "headers": {
@@ -525,33 +515,24 @@ function sendLinePushMessage(message) {
   }
 }
 
-// ==========================================
-//      ส่วนรับ Webhook (ส่ง ID เข้าอีเมล)
-// ==========================================
-
 function doPost(e) {
   try {
-    // 1. รับข้อมูลจาก LINE
     var json = JSON.parse(e.postData.contents);
     if (json.events.length === 0) return;
 
     var event = json.events[0];
     var msg = event.message.text || "";
-    
-    // 2. ดึง ID (ไม่ว่าจะ User หรือ Group)
-    var type = event.source.type; // 'user' หรือ 'group'
+    var type = event.source.type;
     var id = "";
-    
     if (type === "group") {
-      id = event.source.groupId; // <--- นี่คือสิ่งที่คุณอยากได้
+      id = event.source.groupId;
     } else {
       id = event.source.userId;
     }
 
-    // 3. ถ้าพิมพ์คำว่า "check" ให้ส่งอีเมลทันที!
     if (msg.toLowerCase().includes("check")) { 
        MailApp.sendEmail({
-         to: "nitichan@tu.ac.th", // <--- 🔴 แก้เป็นอีเมลของคุณ ตรงนี้!!!
+         to: "nitichan@tu.ac.th",
          subject: "📌 ได้ Group ID แล้วครับ!",
          htmlBody: "<h3>ข้อมูลจาก LINE (" + type + ")</h3>" +
                    "<p><b>Group ID / User ID คือ:</b></p>" +
@@ -562,14 +543,14 @@ function doPost(e) {
     }
 
   } catch (error) {
-    // ถ้ามี Error ก็ให้ส่งเมลบอก (จะได้รู้ว่าพังตรงไหน)
     MailApp.sendEmail({
-       to: "nitichan@tu.ac.th", // <--- 🔴 แก้เป็นอีเมลของคุณ ตรงนี้!!!
+       to: "nitichan@tu.ac.th",
        subject: "❌ ระบบ Error",
        body: "Error: " + error.toString()
     });
   }
 }
+
 function replyLineMessage(replyToken, id, typeText, token) {
   var url = "https://api.line.me/v2/bot/message/reply";
   var payload = JSON.stringify({
@@ -579,7 +560,6 @@ function replyLineMessage(replyToken, id, typeText, token) {
       "text": typeText + " ของคุณคือ:\n" + id + "\n\n(นำรหัสนี้ไปใส่ในช่อง B2 ของ Sheet 'Config_Line')"
     }]
   });
-
   UrlFetchApp.fetch(url, {
     "method": "post",
     "headers": {
@@ -592,7 +572,5 @@ function replyLineMessage(replyToken, id, typeText, token) {
 
 function testPushSystem() {
   console.log("🚀 กำลังทดสอบส่งข้อความ...");
-  
-  // ส่งข้อความทดสอบที่มีตัวหนังสือจริงๆ
   sendLinePushMessage("🟢 ทดสอบระบบ: การเชื่อมต่อสำเร็จ! (จาก Admin)");
 }
