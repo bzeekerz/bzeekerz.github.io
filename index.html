@@ -15,7 +15,7 @@
   <style>
     /* --- JCTU Theme Variables --- */
     :root {
-      --jctu-primary: #76236C; /* สีม่วงเม็ดมะปราง (โดยประมาณ) */
+      --jctu-primary: #76236C; /* สีม่วงเม็ดมะปราง */
       --jctu-dark: #4a1243;
       --jctu-light: #f3e5f5;
       --jctu-bg-gradient: linear-gradient(135deg, #fdfbfd 0%, #f4ebf4 100%);
@@ -28,7 +28,7 @@
       min-height: 100vh;
     }
 
-    /* --- Overriding Bootstrap Colors to JCTU Purple --- */
+    /* --- Overriding Bootstrap Colors --- */
     .text-primary { color: var(--jctu-primary) !important; }
     .bg-primary { background-color: var(--jctu-primary) !important; }
     .btn-primary {
@@ -41,7 +41,6 @@
       background-color: var(--jctu-dark);
       border-color: var(--jctu-dark);
       transform: translateY(-1px);
-      box-shadow: 0 6px 8px rgba(118, 35, 108, 0.3);
     }
     .btn-outline-primary {
       color: var(--jctu-primary);
@@ -59,7 +58,6 @@
       border-radius: 16px; 
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(10px);
-      transition: transform 0.2s;
     }
     
     .logo-img {
@@ -87,18 +85,15 @@
     .hidden { display: none !important; }
     .no-resize { resize: none !important; }
     
-    /* Character Count */
     .char-count { font-size: 0.75rem; color: #999; display: block; text-align: right; margin-top: 4px; }
     .char-count.limit-reached { color: #dc3545; font-weight: 600; }
     
-    /* Loader */
     .loading-overlay { 
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
       background: rgba(255,255,255,0.85); z-index: 9999; 
       display: flex; flex-direction: column; justify-content: center; align-items: center; 
     }
     
-    /* Canvas */
     #sig-canvas { 
       background: #fcfcfc; 
       cursor: crosshair; 
@@ -112,35 +107,66 @@
     .status-received { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
     .status-done { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 
-    /* List Item */
-    .history-item { 
-      border-left: 4px solid transparent; 
-      transition: bg 0.2s;
-    }
+    .history-item { border-left: 4px solid transparent; transition: bg 0.2s; }
     .history-item:hover { background-color: #f8f9fa; }
     
-    /* Admin Table Styles */
     .admin-panel { border-left: 5px solid var(--jctu-primary); }
     .sortable { cursor: pointer; user-select: none; position: relative; }
     .sortable:hover { background-color: #f1f1f1 !important; color: var(--jctu-primary); }
     .sort-icon { font-size: 0.8rem; margin-left: 5px; color: #ccc; }
-    .sort-asc .sort-icon::after { content: "▲"; color: var(--jctu-primary); }
-    .sort-desc .sort-icon::after { content: "▼"; color: var(--jctu-primary); }
-
+    
     /* Animations */
     .fade-in { animation: fadeIn 0.4s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* --- 🔥 Custom Styles for MOTD & Modals 🔥 --- */
+    .motd-box {
+      background-color: #fffdf5;
+      border: 1px solid #ffeeba;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      color: #856404;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+      display: flex; align-items: center;
+    }
+    .motd-box i { font-size: 1.2rem; margin-right: 10px; color: #ffc107; }
+
+    /* ปรับแต่ง Modal ให้สวยงาม */
+    .modal-content {
+      border-radius: 16px;
+      border: none;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+    }
+    .modal-header { border-bottom: 1px solid rgba(0,0,0,0.05); }
+    .modal-footer { border-top: none; padding-top: 0; padding-bottom: 1.5rem; }
   </style>
 </head>
 <body>
 
 <div id="loading" class="loading-overlay hidden">
-  <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="Loading..." style="width: 60px; margin-bottom: 15px;">
+  <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="Loading..." style="width: 60px; margin-bottom: 15px;">
   <div class="spinner-border text-primary" style="width: 2.5rem; height: 2.5rem;" role="status"></div>
   <small class="text-muted mt-2">กำลังประมวลผล...</small>
 </div>
 
 <input type="file" id="file-input" class="hidden" accept="application/pdf,image/*">
+
+<div class="modal fade" id="customModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="customModalTitle">แจ้งเตือน</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-4" id="customModalBody">
+        </div>
+      <div class="modal-footer" id="customModalFooter">
+        </div>
+    </div>
+  </div>
+</div>
 
 <div class="container py-4">
   <div id="server-alert" class="alert hidden text-center shadow-sm" role="alert"></div>
@@ -148,9 +174,15 @@
   <div id="login-page" class="row justify-content-center align-items-center" style="min-height: 80vh;">
     <div class="col-md-5 col-lg-4">
       <div class="text-center fade-in">
-        <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="JC TU Logo" class="logo-img">
+        <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="JC TU Logo" class="logo-img">
         <h4 class="fw-bold mb-4" style="color: var(--jctu-primary);">ระบบคำร้องออนไลน์</h4>
       </div>
+
+      <div id="motd-container" class="motd-box fade-in hidden">
+        <i class="bi bi-megaphone-fill"></i>
+        <div id="motd-text"></div>
+      </div>
+
       <div class="card p-4 fade-in">
         <h5 class="text-center mb-4 text-muted">เข้าสู่ระบบ / Login</h5>
         <form id="loginForm">
@@ -178,7 +210,7 @@
   <div id="register-page" class="hidden row justify-content-center align-items-center" style="min-height: 80vh;">
      <div class="col-md-6 fade-in">
         <div class="text-center mb-3">
-          <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="JC TU Logo" style="height: 50px;">
+          <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="JC TU Logo" style="height: 50px;">
         </div>
         <div class="card p-4">
            <h4 class="text-primary fw-bold mb-3"><i class="bi bi-person-plus"></i> ลงทะเบียน</h4>
@@ -198,7 +230,7 @@
               
               <div class="mb-2">
                  <label class="small text-muted">ชื่อ-นามสกุล (ภาษาไทย)</label>
-                 <input type="text" name="reg_name" class="form-control" required>
+                 <input type="text" name="reg_name" class="form-control" data-limit="30" required>
               </div>
               
               <div class="mb-3">
@@ -214,21 +246,21 @@
               <div class="row g-2 mb-2">
                 <div class="col-8">
                    <label class="small text-muted">รหัสนักศึกษา</label>
-                   <input type="tel" name="reg_std_id" class="form-control" required>
+                   <input type="tel" name="reg_std_id" class="form-control" data-limit="10" data-type="number" required>
                 </div>
                 <div class="col-4">
                    <label class="small text-muted">ชั้นปี</label>
-                   <input type="tel" name="reg_year" class="form-control" required>
+                   <input type="tel" name="reg_year" class="form-control" data-limit="1" data-type="number" required>
                 </div>
               </div>
               
               <div class="mb-2">
                  <label class="small text-muted">เบอร์โทรศัพท์</label>
-                 <input type="tel" name="reg_tel" class="form-control" required>
+                 <input type="tel" name="reg_tel" class="form-control" data-limit="10" data-type="number" required>
               </div>
               <div class="mb-4">
                  <label class="small text-muted">Email</label>
-                 <input type="email" name="reg_email" class="form-control" required>
+                 <input type="email" name="reg_email" class="form-control" data-limit="60" required>
               </div>
               
               <button class="btn btn-primary w-100 py-2">ยืนยันการสมัคร</button>
@@ -278,7 +310,7 @@
   <div id="app-page" class="hidden fade-in">
     <nav class="navbar navbar-light px-4 mb-4 d-flex justify-content-between align-items-center sticky-top">
       <div class="d-flex align-items-center">
-        <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="Logo" style="height: 40px; margin-right: 15px;">
+        <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="Logo" style="height: 40px; margin-right: 15px;">
         <div class="lh-1">
            <span class="d-block fw-bold text-primary">JC Request</span>
            <span class="small text-muted">สวัสดี, <span id="disp_name"></span></span>
@@ -322,8 +354,7 @@
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="admin-table-body">
-            </tbody>
+          <tbody id="admin-table-body"></tbody>
         </table>
       </div>
     </div>
@@ -507,23 +538,95 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
+  // --- 🔥 Custom Modal Helper Functions 🔥 ---
+  // สร้างตัวแปรควบคุม Modal ของ Bootstrap
+  let myModalObj = null;
+  document.addEventListener('DOMContentLoaded', () => {
+      const myModalEl = document.getElementById('customModal');
+      myModalObj = new bootstrap.Modal(myModalEl);
+  });
+
+  // แทนที่ alert()
+  function showAlert(msg, title = 'แจ้งเตือน', callback = null) {
+      document.getElementById('customModalTitle').innerText = title;
+      document.getElementById('customModalBody').innerHTML = `<p class="m-0 fs-6">${msg}</p>`;
+      document.getElementById('customModalFooter').innerHTML = `<button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">ตกลง</button>`;
+      
+      const el = document.getElementById('customModal');
+      if(callback) {
+          const handler = () => {
+              callback();
+              el.removeEventListener('hidden.bs.modal', handler);
+          };
+          el.addEventListener('hidden.bs.modal', handler);
+      }
+      myModalObj.show();
+  }
+
+  // แทนที่ confirm()
+  function showConfirm(msg, onConfirm) {
+      document.getElementById('customModalTitle').innerText = 'ยืนยันการทำรายการ';
+      document.getElementById('customModalBody').innerHTML = `<p class="m-0 fs-6">${msg}</p>`;
+      document.getElementById('customModalFooter').innerHTML = `
+          <button type="button" class="btn btn-light border" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="button" class="btn btn-primary px-4" id="modalConfirmBtn">ยืนยัน</button>
+      `;
+      myModalObj.show();
+      document.getElementById('modalConfirmBtn').onclick = () => {
+          myModalObj.hide();
+          onConfirm();
+      };
+  }
+
+  // แทนที่ prompt()
+  function showPrompt(msg, placeholder, onConfirm) {
+      document.getElementById('customModalTitle').innerText = 'ระบุข้อมูล';
+      document.getElementById('customModalBody').innerHTML = `
+          <label class="form-label text-muted small">${msg}</label>
+          <input type="text" id="modalPromptInput" class="form-control" placeholder="${placeholder}">
+      `;
+      document.getElementById('customModalFooter').innerHTML = `
+          <button type="button" class="btn btn-light border" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="button" class="btn btn-primary px-4" id="modalPromptBtn">ตกลง</button>
+      `;
+      myModalObj.show();
+      
+      // Auto focus
+      const el = document.getElementById('customModal');
+      const handler = () => {
+           document.getElementById('modalPromptInput').focus();
+           el.removeEventListener('shown.bs.modal', handler);
+      };
+      el.addEventListener('shown.bs.modal', handler);
+
+      document.getElementById('modalPromptBtn').onclick = () => {
+          const val = document.getElementById('modalPromptInput').value;
+          if(val) {
+               myModalObj.hide();
+               onConfirm(val);
+          }
+      };
+  }
+
+  // --- End Custom Modal Helpers ---
+
   let currentUser = null;
   let globalTemplates = [];
   let currentUploadFileId = null;
   let adminDataList = [];
   let currentSort = { col: 'timestamp', order: 'desc' };
 
-  // --- 🔴 SESSION MANAGEMENT (จำค่าล็อกอิน 5 นาที) ---
   const SESSION_KEY = 'JC_FORM_SESSION';
-  const SESSION_DURATION = 5 * 60 * 1000; // 5 นาที
+  const SESSION_DURATION = 5 * 60 * 1000; 
 
   function saveSession(userData) {
-    const sessionData = {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
       user: userData,
       expiry: new Date().getTime() + SESSION_DURATION
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+    }));
   }
 
   function checkSession() {
@@ -536,19 +639,11 @@
     }
     return session.user;
   }
-  // ----------------------------------------------------
 
   const TOPIC_MAP = {
-      't1': 'เลือกเรียนกลุ่มวิชา',
-      't2': 'ขอเปลี่ยนกลุ่มวิชา',
-      't3': 'ขอใบรับรองความประพฤติ',
-      't4': 'ขออนุมัติย้ายคณะ',
-      't5': 'ขอลาออก',
-      't6': 'ขอคืนสภาพนักศึกษา',
-      't7': 'ขอใช้สถานที่',
-      't8': 'ขออนุญาตใช้ห้อง',
-      't9': 'ขอยืมอุปกรณ์',
-      't10': 'อื่นๆ'
+      't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา', 't3': 'ขอใบรับรองความประพฤติ',
+      't4': 'ขออนุมัติย้ายคณะ', 't5': 'ขอลาออก', 't6': 'ขอคืนสภาพนักศึกษา',
+      't7': 'ขอใช้สถานที่', 't8': 'ขออนุญาตใช้ห้อง', 't9': 'ขอยืมอุปกรณ์', 't10': 'อื่นๆ'
   };
   
   const urlParams = <?!= urlParams ?> || {};
@@ -556,6 +651,8 @@
   const serverStatus = "<?= serverStatus ?>";
 
   window.onload = function() {
+    loadMOTD(); // 🔥 โหลด MOTD 🔥
+
     if (serverMsg && serverMsg !== 'undefined') {
       const alertBox = document.getElementById('server-alert');
       alertBox.className = `alert alert-${serverStatus === 'success' ? 'success' : 'danger'}`;
@@ -576,6 +673,15 @@
     }
     initInputConstraints();
   };
+
+  function loadMOTD() {
+    google.script.run.withSuccessHandler(msg => {
+      if (msg && msg.trim() !== "") {
+        document.getElementById('motd-text').innerText = msg;
+        document.getElementById('motd-container').classList.remove('hidden');
+      }
+    }).getMOTD();
+  }
 
   function setupAppUI(user) {
     currentUser = user;
@@ -611,7 +717,7 @@
       location.reload(); 
   }
 
-  // --- LOGIC ---
+  // --- LOGIC (Updated to use Custom Modals) ---
   document.getElementById('loginForm').addEventListener('submit', e => {
     e.preventDefault(); toggleLoad(true);
     google.script.run.withSuccessHandler(res => {
@@ -619,32 +725,51 @@
       if(res.status === 'success') {
         saveSession(res);
         setupAppUI(res);
-      } else alert(res.message);
+      } else showAlert(res.message, 'เข้าสู่ระบบไม่สำเร็จ');
     }).loginUser(document.getElementById('u_name').value, document.getElementById('u_pass').value);
   });
 
   document.getElementById('regForm').addEventListener('submit', function(e) {
     e.preventDefault(); toggleLoad(true);
     const data = {}; new FormData(this).forEach((v,k)=>data[k]=v);
-    google.script.run.withSuccessHandler(res => { toggleLoad(false); alert(res.message); if(res.status==='success') showPage('login-page'); }).registerUser(data);
+    google.script.run.withSuccessHandler(res => { 
+        toggleLoad(false); 
+        showAlert(res.message, res.status==='success' ? 'สำเร็จ' : 'ข้อผิดพลาด', () => {
+            if(res.status==='success') showPage('login-page');
+        });
+    }).registerUser(data);
   });
 
   document.getElementById('forgotForm').addEventListener('submit', e => {
     e.preventDefault(); toggleLoad(true);
-    google.script.run.withSuccessHandler(res => { toggleLoad(false); alert(res.message); if(res.status==='success') showPage('login-page'); }).requestPasswordReset(document.getElementById('forgot_email').value);
+    google.script.run.withSuccessHandler(res => { 
+        toggleLoad(false); 
+        showAlert(res.message, 'ผลการดำเนินการ', () => {
+            if(res.status==='success') showPage('login-page');
+        });
+    }).requestPasswordReset(document.getElementById('forgot_email').value);
   });
 
   document.getElementById('resetForm').addEventListener('submit', e => {
     e.preventDefault(); 
-    if(document.getElementById('new_reset_pass').value !== document.getElementById('confirm_reset_pass').value) return alert('รหัสไม่ตรงกัน');
+    if(document.getElementById('new_reset_pass').value !== document.getElementById('confirm_reset_pass').value) return showAlert('รหัสผ่านไม่ตรงกัน', 'ข้อผิดพลาด');
     toggleLoad(true);
-    google.script.run.withSuccessHandler(res => { toggleLoad(false); alert(res.message); if(res.status==='success') window.location.href="<?= getScriptUrl() ?>"; }).submitResetPassword(document.getElementById('reset_token').value, document.getElementById('new_reset_pass').value);
+    google.script.run.withSuccessHandler(res => { 
+        toggleLoad(false); 
+        showAlert(res.message, 'สำเร็จ', () => {
+            if(res.status==='success') window.location.href="<?= getScriptUrl() ?>"; 
+        });
+    }).submitResetPassword(document.getElementById('reset_token').value, document.getElementById('new_reset_pass').value);
   });
 
   document.getElementById('changePassForm').addEventListener('submit', function(e) {
     e.preventDefault(); toggleLoad(true);
     const data = new FormData(this);
-    google.script.run.withSuccessHandler(res => { toggleLoad(false); alert(res.message); if(res.status==='success'){ this.reset(); document.getElementById('change-pass-modal').classList.add('hidden'); } }).changePassword(currentUser.username, data.get('old_pass'), data.get('new_pass'));
+    google.script.run.withSuccessHandler(res => { 
+        toggleLoad(false); 
+        showAlert(res.message, res.status==='success'?'สำเร็จ':'ข้อผิดพลาด');
+        if(res.status==='success'){ this.reset(); document.getElementById('change-pass-modal').classList.add('hidden'); } 
+    }).changePassword(currentUser.username, data.get('old_pass'), data.get('new_pass'));
   });
 
   document.getElementById('mainForm').addEventListener('submit', function(e) {
@@ -655,14 +780,18 @@
     google.script.run.withSuccessHandler(res => {
       toggleLoad(false);
       if(res.status === 'success') {
-        if(confirm('✅ สร้างคำร้องสำเร็จ! ต้องการเปิดดู PDF เลยหรือไม่?')) window.open(res.url);
+        // 🔥 Custom Confirm instead of window.confirm 🔥
+        showConfirm('✅ สร้างคำร้องสำเร็จ! ต้องการเปิดดู PDF เลยหรือไม่?', () => {
+            window.open(res.url);
+        });
+        
         loadRequests(); clearSig(); this.reset();
         document.getElementById('main_year').value = currentUser.year || '';
         document.getElementById('main_tel').value = currentUser.tel || '';
         document.getElementById('main_email').value = currentUser.email || '';
         document.querySelectorAll('.char-count').forEach(el => el.innerText = `0 / ${el.innerText.split(' / ')[1]}`);
-      } else alert(res.message);
-    }).withFailureHandler(e => { toggleLoad(false); alert(e); }).processForm(data, currentUser);
+      } else showAlert(res.message, 'เกิดข้อผิดพลาด');
+    }).withFailureHandler(e => { toggleLoad(false); showAlert(e, 'Error'); }).processForm(data, currentUser);
   });
 
   function loadRequests() {
@@ -689,7 +818,6 @@
       let badge = `<span class="badge status-wait rounded-pill"><i class="bi bi-hourglass-split"></i> รอ</span>`;
       if(i.status === 'รับเรื่องแล้ว') badge = `<span class="badge status-received rounded-pill"><i class="bi bi-check2"></i> รับเรื่องแล้ว</span>`;
       if(i.status === 'เสร็จสิ้น') badge = `<span class="badge status-done rounded-pill"><i class="bi bi-check-circle-fill"></i> เสร็จสิ้น</span>`;
-
       let adminFileLink = i.adminFile ? `<div class="mt-2"><a href="${i.adminFile}" target="_blank" class="btn btn-success btn-sm w-100 shadow-sm"><i class="bi bi-file-earmark-check"></i> ดาวน์โหลดเอกสาร (ฉบับสมบูรณ์)</a></div>` : '';
 
       return `
@@ -725,11 +853,7 @@
   function renderAdminTable(list) {
     const tbody = document.getElementById('admin-table-body');
     document.getElementById('admin-count').innerText = `${list.length} รายการ`;
-
-    if(list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ไม่พบข้อมูลคำร้อง</td></tr>';
-        return;
-    }
+    if(list.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ไม่พบข้อมูลคำร้อง</td></tr>'; return; }
 
     tbody.innerHTML = list.map(i => {
         const topicName = TOPIC_MAP[i.type] || i.type || '-';
@@ -743,11 +867,7 @@
         <td class="text-nowrap text-muted small">${i.timestamp}</td>
         <td class="fw-bold text-primary">${i.username}</td>
         <td><span class="badge bg-light text-dark border fw-normal">${topicName}</span></td>
-        <td>
-            <a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-light border">
-                <i class="bi bi-file-pdf text-danger"></i> PDF
-            </a>
-        </td>
+        <td><a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-light border"><i class="bi bi-file-pdf text-danger"></i> PDF</a></td>
         <td>
           <select class="form-select form-select-sm badge ${statusClass} border-0" 
                   style="width:auto; cursor:pointer; padding-right: 2rem;" 
@@ -763,32 +883,19 @@
              ${i.studentFile ? `<a href="${i.studentFile}" target="_blank" class="btn btn-outline-primary btn-sm" title="View User File"><i class="bi bi-eye"></i></a>` : ''}
           </div>
         </td>
-      </tr>
-    `;
+      </tr>`;
     }).join('');
     updateSortIcons();
   }
 
-  // --- Sorting & Filtering (Same Logic) ---
   function sortAdminTable(col) {
-    if (currentSort.col === col) {
-        currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
-    } else {
-        currentSort.col = col;
-        currentSort.order = 'asc';
-    }
+    if (currentSort.col === col) { currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc'; } 
+    else { currentSort.col = col; currentSort.order = 'asc'; }
     const sortedList = [...adminDataList].sort((a, b) => {
         let valA, valB;
-        if (col === 'timestamp') {
-            valA = parseCustomDate(a.timestamp);
-            valB = parseCustomDate(b.timestamp);
-        } else if (col === 'topic') {
-            valA = TOPIC_MAP[a.type] || a.type || '';
-            valB = TOPIC_MAP[b.type] || b.type || '';
-        } else {
-            valA = String(a[col] || '').toLowerCase();
-            valB = String(b[col] || '').toLowerCase();
-        }
+        if (col === 'timestamp') { valA = parseCustomDate(a.timestamp); valB = parseCustomDate(b.timestamp); } 
+        else if (col === 'topic') { valA = TOPIC_MAP[a.type] || a.type || ''; valB = TOPIC_MAP[b.type] || b.type || ''; } 
+        else { valA = String(a[col] || '').toLowerCase(); valB = String(b[col] || '').toLowerCase(); }
         if (valA < valB) return currentSort.order === 'asc' ? -1 : 1;
         if (valA > valB) return currentSort.order === 'asc' ? 1 : -1;
         return 0;
@@ -797,8 +904,8 @@
   }
 
   function filterAdminTable(sourceList = null) {
-    let list = sourceList;
-    if (!sourceList) { sortAdminTable(currentSort.col); return; }
+    let list = sourceList || adminDataList;
+    if (!sourceList && !adminDataList.length) return;
     const term = document.getElementById('admin-search').value.toLowerCase().trim();
     const filtered = list.filter(item => {
         const topic = (TOPIC_MAP[item.type] || '').toLowerCase();
@@ -825,7 +932,6 @@
     if(activeHeader) { activeHeader.className = `sortable sort-${currentSort.order}`; }
   }
 
-  // --- Utils ---
   function triggerUpload(fileId) {
     currentUploadFileId = fileId;
     document.getElementById('file-input').click();
@@ -838,42 +944,47 @@
     reader.onload = function(e) {
       google.script.run.withSuccessHandler(res => {
         toggleLoad(false);
-        alert(res.message);
+        showAlert(res.message, res.status==='success'?'สำเร็จ':'ข้อผิดพลาด');
         loadRequests(); 
       }).uploadFile(e.target.result, file.type, currentUploadFileId, currentUser.role, currentUser.username);
     };
     reader.readAsDataURL(file);
   });
+
   function changeStatus(fileId, newStatus) {
     google.script.run.withSuccessHandler(msg => console.log(msg)).adminUpdateStatus(fileId, newStatus);
   }
+  
+  // 🔥 Custom Prompt 🔥
   function promptBanUser() {
-    const email = prompt("กรอก Email ที่ต้องการระงับการใช้งาน:");
-    if(email) {
-      toggleLoad(true);
-      google.script.run.withSuccessHandler(res => { toggleLoad(false); alert(res); }).adminBanUser(email);
-    }
+    showPrompt("กรอก Email ที่ต้องการระงับการใช้งาน:", "example@tu.ac.th", (email) => {
+        toggleLoad(true);
+        google.script.run.withSuccessHandler(res => { toggleLoad(false); showAlert(res); }).adminBanUser(email);
+    });
   }
+  
+  // 🔥 Custom Prompt 🔥
   function renameItem(fileId) {
-     const newName = prompt("กรุณาใส่ชื่อไฟล์ใหม่:");
-     if(newName) {
+     showPrompt("กรุณาใส่ชื่อไฟล์ใหม่:", "", (newName) => {
        toggleLoad(true);
        google.script.run.withSuccessHandler(res => {
          toggleLoad(false);
-         alert(res.message);
+         showAlert(res.message);
          if(res.status==='success') loadRequests();
        }).renameHistory(fileId, newName, currentUser.username);
-     }
+     });
   }
+  
+  // 🔥 Custom Confirm 🔥
   function deleteItem(fileId) {
-     if(confirm("คุณต้องการลบรายการนี้ใช่หรือไม่?")) {
+     showConfirm("คุณต้องการลบรายการนี้ใช่หรือไม่?", () => {
        toggleLoad(true);
        google.script.run.withSuccessHandler(res => {
          toggleLoad(false);
-         alert(res.message);
+         showAlert(res.message);
          if(res.status==='success') loadRequests();
        }).deleteHistory(fileId, currentUser.username);
-     }
+     });
   }
 
   function toggleFields(topic) {
