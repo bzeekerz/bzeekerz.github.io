@@ -43,14 +43,11 @@ function sendEmail(to, subject, body) {
   } catch(e) { console.log("Email Error: " + e.toString()); }
 }
 
-// 🔥 ฟังก์ชันใหม่สำหรับดึงข้อความ MOTD 🔥
 function getMOTD() {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName('MOTD');
-    // ถ้าไม่มี Sheet นี้ให้ส่งค่าว่างกลับไป
     if (!sheet) return "";
-    // อ่านค่าจากช่อง A1
     return sheet.getRange(1, 1).getValue(); 
   } catch (e) {
     return "";
@@ -61,7 +58,6 @@ function getMOTD() {
 function loginUser(username, password) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let userSheet = ss.getSheetByName('Users');
-  
   if (!userSheet) {
     userSheet = ss.insertSheet('Users');
     userSheet.appendRow(['Username', 'Password', 'Name', 'Std_ID', 'Email', 'Tel', 'Year', 'Gender', 'Token', 'Verified', 'Reset_Token', 'Reset_Exp', 'Role', 'Status']);
@@ -219,6 +215,7 @@ function processForm(formData, userInfo) {
     replace('address', truncate(formData.address, 95));
     replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 10));
     replace('email', truncate(formData.email, 60));
+    
     let specificData = "";
     specificData += truncate(val('t1', formData.major_sel), 40);
     specificData += truncate(val('t2', formData.major_from), 40) + " " + truncate(val('t2', formData.major_to), 40);
@@ -271,8 +268,8 @@ function processForm(formData, userInfo) {
       formData.advisor, formData.email, formData.address, specificData, formData.reason_full,
       'รอ', '', '' 
     ]);
-
-    // แจ้งเตือน LINE
+    
+    // แจ้งเตือน LINE (สร้างใหม่)
     try {
         const topicMap = {
           't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
@@ -293,18 +290,33 @@ function processForm(formData, userInfo) {
     }
 
     return { status: 'success', url: pdfUrl };
-  } catch (e) { return { status: 'error', message: 'Error: ' + e.toString() }; }
+  } catch (e) { return { status: 'error', message: 'Error: ' + e.toString() };
+  }
 }
 
 function getRequestsData(user) {
   if (!user || !user.username) return [];
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
+  // 1. ดึงข้อมูล Users มาทำ Map เพื่อหาชื่อและรหัสนักศึกษา
+  const userSheet = ss.getSheetByName('Users');
+  let userMap = {};
+  if (userSheet) {
+     const uData = userSheet.getDataRange().getValues();
+     // สมมติ: col 0=User, col 2=Name, col 3=Std_ID
+     uData.forEach(r => {
+        if(r[0]) userMap[r[0]] = { name: r[2], std_id: r[3] };
+     });
+  }
+
+  // 2. ดึงข้อมูล Logs
   let sheet = ss.getSheetByName('Logs');
   if(!sheet || sheet.getLastRow() < 2) return [];
   
   const lastCol = sheet.getLastColumn();
   const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
+  
   let requests = data.map(r => {
     try {
         let ts = r[0];
@@ -314,10 +326,15 @@ function getRequestsData(user) {
         } else {
             timeStr = String(ts || "-");
         }
-     
+        
+        let username = String(r[1] || "");
+        let userInfo = userMap[username] || { name: "-", std_id: "-" };
+
         return {
             timestamp: timeStr,
-            username: String(r[1] || ""),
+            username: username,
+            name: String(userInfo.name),       // เพิ่มชื่อ
+            std_id: String(userInfo.std_id),   // เพิ่มรหัสนักศึกษา
             fileName: String(r[2] || "ไม่มีชื่อไฟล์"),
             type: String(r[3] || ""),
             pdfUrl: String(r[4] || "#"),
@@ -330,6 +347,7 @@ function getRequestsData(user) {
         return null;
     }
   }).filter(item => item !== null);
+  
   if (user.role !== 'admin') {
     requests = requests.filter(r => r.username === user.username);
   }
@@ -353,12 +371,44 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
     if (sheet.getLastColumn() < 19) sheet.insertColumnsAfter(sheet.getLastColumn(), 19 - sheet.getLastColumn());
 
     if (uploaderRole === 'admin') {
+      // Admin อัปโหลดไฟล์ (เช่น ไฟล์ที่เซ็นแล้ว)
       sheet.getRange(rowIndex + 1, 19).setValue(fileUrl);
       sheet.getRange(rowIndex + 1, 17).setValue('เสร็จสิ้น');
     } else {
+      // นักศึกษาอัปโหลดไฟล์
       if (data[rowIndex][1] !== username) return { status: 'error', message: 'ไม่มีสิทธิ์' };
+      
       sheet.getRange(rowIndex + 1, 18).setValue(fileUrl);
-      sheet.getRange(rowIndex + 1, 17).setValue('รับเรื่องแล้ว'); 
+      sheet.getRange(rowIndex + 1, 17).setValue('รอเจ้าหน้าที่ตรวจสอบ'); // เปลี่ยนสถานะตาม Requirement
+
+      // --- แจ้งเตือน LINE เมื่อนักศึกษาส่งไฟล์ ---
+      try {
+        const topicMap = {
+          't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
+          't3': 'ขอหนังสือรับรองความประพฤติ', 't4': 'ขออนุมัติย้ายคณะ',
+          't5': 'ขอลาออก', 't6': 'ขอคืนสภาพนักศึกษา',
+          't7': 'ขอใช้ห้องเรียน / สถานที่', 't8': 'ขออนุญาตใช้ห้อง',
+          't9': 'ขอยืมอุปกรณ์', 't10': 'อื่นๆ'
+        };
+        const r = data[rowIndex];
+        const reqType = r[3];
+        const topicName = topicMap[reqType] || reqType;
+        
+        // ดึงชื่อนักศึกษา (ต้องหาจาก Users เหมือนเดิม หรือถ้าไม่มีก็ใช้ username ไปก่อน)
+        const userSheet = ss.getSheetByName('Users');
+        const userData = userSheet.getDataRange().getValues();
+        const userObj = userData.find(u => u[0] === username);
+        const nameShow = userObj ? `${userObj[2]} (${userObj[3]})` : username;
+
+        const lineMsg = `🔄 Updated นักศึกษาส่งไฟล์ใหม่แล้ว!\n` +
+                        `กำลังรอรับเจ้าหน้าที่รับเรื่อง\n` +
+                        `👤 จาก: ${nameShow}\n` +
+                        `📝 เรื่อง: ${topicName}\n` +
+                        `📂 ไฟล์แนบ: ${fileUrl}`;
+        sendLinePushMessage(lineMsg);
+      } catch(err) {
+        console.log("LINE Update Error: " + err);
+      }
     }
 
     return { status: 'success', message: 'อัปโหลดสำเร็จ' };
@@ -519,7 +569,6 @@ function doPost(e) {
   try {
     var json = JSON.parse(e.postData.contents);
     if (json.events.length === 0) return;
-
     var event = json.events[0];
     var msg = event.message.text || "";
     var type = event.source.type;
@@ -536,7 +585,8 @@ function doPost(e) {
          subject: "📌 ได้ Group ID แล้วครับ!",
          htmlBody: "<h3>ข้อมูลจาก LINE (" + type + ")</h3>" +
                    "<p><b>Group ID / User ID คือ:</b></p>" +
-                   "<h2>" + id + "</h2>" +
+                   "<h2>" 
+                   + id + "</h2>" +
                    "<hr>" +
                    "<p>ก๊อปปี้รหัสนี้ไปใส่ในตัวแปร <b>ADMIN_USER_ID</b> ในไฟล์ Code.gs ได้เลยครับ</p>"
        });
