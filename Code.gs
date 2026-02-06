@@ -26,12 +26,8 @@ function getScriptUrl() { return ScriptApp.getService().getUrl(); }
 function generateToken() { return Utilities.getUuid(); }
 
 function hashPassword(password, salt) {
-  // กรณีไม่มี salt (เผื่อข้อมูลเก่า) ให้เป็นค่าว่าง
-  if (salt == null) salt = ""; 
-  
-  // ผสม password กับ salt ก่อนเข้า SHA-256
+  if (salt == null) salt = "";
   const rawBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password + salt);
-  
   let txtHash = '';
   for (let i = 0; i < rawBytes.length; i++) {
     let hashVal = rawBytes[i];
@@ -42,10 +38,7 @@ function hashPassword(password, salt) {
   return txtHash;
 }
 
-// เพิ่มฟังก์ชันสร้าง Salt (ใช้ UUID เพราะไม่ซ้ำแน่นอน)
-function generateSalt() {
-  return Utilities.getUuid();
-}
+function generateSalt() { return Utilities.getUuid(); }
 
 function sendEmail(to, subject, body) {
   try {
@@ -68,8 +61,6 @@ function getMOTD() {
 function loginUser(username, password) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let userSheet = ss.getSheetByName('Users');
-  
-  // ถ้ายังไม่มี Sheet ให้สร้างใหม่พร้อม Header ที่มี Salt
   if (!userSheet) {
     userSheet = ss.insertSheet('Users');
     userSheet.appendRow(['Username', 'Password', 'Name', 'Std_ID', 'Email', 'Tel', 'Year', 'Gender', 'Token', 'Verified', 'Reset_Token', 'Reset_Exp', 'Role', 'Status', 'Salt']);
@@ -77,28 +68,21 @@ function loginUser(username, password) {
   }
 
   const data = userSheet.getDataRange().getValues();
-  
-  // 1. ค้นหาเฉพาะ Username ก่อน (ยังไม่เช็ค Password ตรงนี้)
   const userRow = data.find(row => row[0] == username);
-  
   if (userRow) {
-    // ตรวจสอบสถานะการยืนยันตัวตนและ Ban
     if (String(userRow[9]).toUpperCase() !== 'TRUE') {
       return { status: 'error', message: 'กรุณายืนยันตัวตนทาง Email ก่อน' };
     }
     
     let role = (userRow.length > 12 && userRow[12]) ? userRow[12] : 'user';
     let status = (userRow.length > 13 && userRow[13]) ? userRow[13] : 'active';
-    
     if (String(status).toLowerCase() === 'banned') {
       return { status: 'error', message: 'บัญชีของคุณถูกระงับการใช้งาน' };
     }
 
-    // --- ส่วนตรวจสอบรหัสผ่านแบบ Salted ---
-    const storedHash = userRow[1];      // รหัสผ่านที่ถูกแฮชใน DB
-    const storedSalt = userRow[14] || ""; // ดึง Salt จากคอลัมน์ที่ 15 (Index 14)
+    const storedHash = userRow[1];
+    const storedSalt = userRow[14] || "";
     
-    // เอาพาสที่กรอก + Salt ใน DB มาแฮชใหม่ แล้วเทียบกัน
     if (hashPassword(password, storedSalt) === storedHash) {
         return { 
           status: 'success', 
@@ -114,15 +98,12 @@ function loginUser(username, password) {
     }
   } 
   
-  // ถ้าหา User ไม่เจอ หรือ Password ผิด
   return { status: 'error', message: 'Username หรือ Password ไม่ถูกต้อง' };
 }
 
 function registerUser(formObject) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let userSheet = ss.getSheetByName('Users');
-  
-  // อัปเดต Header ให้มี Salt หากสร้าง Sheet ใหม่
   if (!userSheet) {
     userSheet = ss.insertSheet('Users');
     userSheet.appendRow(['Username', 'Password', 'Name', 'Std_ID', 'Email', 'Tel', 'Year', 'Gender', 'Token', 'Verified', 'Reset_Token', 'Reset_Exp', 'Role', 'Status', 'Salt']);
@@ -132,14 +113,11 @@ function registerUser(formObject) {
   if (data.some(row => row[0] === formObject.reg_username)) return { status: 'error', message: 'Username นี้ถูกใช้ไปแล้ว' };
   if (data.some(row => row[4] === formObject.reg_email)) return { status: 'error', message: 'Email นี้ถูกใช้ไปแล้ว' };
 
-  // --- สร้าง Salt และ Hash ---
   const salt = generateSalt(); 
   const hashedPassword = hashPassword(formObject.reg_password, salt);
-  
   const verifyToken = generateToken();
   const verifyLink = `${getScriptUrl()}?page=verify&token=${verifyToken}`;
 
-  // บันทึกข้อมูล โดยเพิ่ม salt ต่อท้ายสุด (คอลัมน์ที่ 15)
   userSheet.appendRow([
     formObject.reg_username, 
     hashedPassword, 
@@ -155,9 +133,8 @@ function registerUser(formObject) {
     '', 
     'user', 
     'active',
-    salt // <--- เพิ่ม Salt ตรงนี้
+    salt
   ]);
-  
   sendEmail(formObject.reg_email, 'ยืนยันการสมัคร', `<p><a href="${verifyLink}">คลิกยืนยันตัวตน</a></p>`);
   return { status: 'success', message: 'สมัครสำเร็จ! กรุณาตรวจสอบ Email' };
 }
@@ -194,22 +171,14 @@ function submitResetPassword(token, newPass) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const userSheet = ss.getSheetByName('Users');
   const data = userSheet.getDataRange().getValues();
-  
-  // ค้นหาจาก Token
-  const rowIndex = data.findIndex(row => row[10] === token); // Index 10 = Reset_Token
+  const rowIndex = data.findIndex(row => row[10] === token);
   
   if (rowIndex > 0) {
     if (new Date().getTime() > data[rowIndex][11]) return { status: 'error', message: 'ลิงก์หมดอายุ' };
-    
-    // --- สร้าง Salt ใหม่ ---
     const newSalt = generateSalt();
     const newHash = hashPassword(newPass, newSalt);
-
-    // อัปเดต Password (คอลัมน์ 2)
     userSheet.getRange(rowIndex + 1, 2).setValue(newHash);
-    // ล้าง Token
     userSheet.getRange(rowIndex + 1, 11).setValue('');
-    // อัปเดต Salt ใหม่ (คอลัมน์ 15)
     userSheet.getRange(rowIndex + 1, 15).setValue(newSalt);
     
     return { status: 'success', message: 'เปลี่ยนรหัสสำเร็จ' };
@@ -222,25 +191,17 @@ function changePassword(user, oldPass, newPass) {
   const userSheet = ss.getSheetByName('Users');
   const data = userSheet.getDataRange().getValues();
   
-  // ค้นหา User (Row Index) จาก Username
   const rowIndex = data.findIndex(row => row[0] == user);
-  
   if(rowIndex > 0) {
     const userData = data[rowIndex];
     const storedHash = userData[1];
-    const storedSalt = userData[14] || ""; // ดึง Salt เดิม
+    const storedSalt = userData[14] || ""; 
     
-    // ตรวจสอบรหัสเก่า
     if (hashPassword(oldPass, storedSalt) === storedHash) {
-        // --- ถ้ารหัสเก่าถูก ให้สร้าง Salt ใหม่สำหรับรหัสใหม่ ---
         const newSalt = generateSalt();
         const newHash = hashPassword(newPass, newSalt);
-        
-        // อัปเดต Password
         userSheet.getRange(rowIndex + 1, 2).setValue(newHash);
-        // อัปเดต Salt
         userSheet.getRange(rowIndex + 1, 15).setValue(newSalt);
-        
         return { status: 'success', message: 'เปลี่ยนรหัสเรียบร้อย' };
     }
   }
@@ -255,7 +216,6 @@ function processForm(formData, userInfo) {
     const copyFile = templateFile.makeCopy(fileName, destFolder);
     const copyId = copyFile.getId();
     const slide = SlidesApp.openById(copyId);
-    
     if (formData.signature_data) {
       const firstSlide = slide.getSlides()[0];
       replaceTextWithImage(firstSlide, '{{signature}}', formData.signature_data);
@@ -286,7 +246,6 @@ function processForm(formData, userInfo) {
     replace('address', truncate(formData.address, 95));
     replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 10));
     replace('email', truncate(formData.email, 60));
-    
     let specificData = "";
     specificData += truncate(val('t1', formData.major_sel), 40);
     specificData += truncate(val('t2', formData.major_from), 40) + " " + truncate(val('t2', formData.major_to), 40);
@@ -326,21 +285,24 @@ function processForm(formData, userInfo) {
     let logSheet = ss.getSheetByName('Logs');
     if(!logSheet) { 
       logSheet = ss.insertSheet('Logs');
-      logSheet.appendRow(['Timestamp', 'Username', 'File Name', 'Type', 'URL', 'File ID', 'Program', 'Gender', 'Year', 'Tel', 'Major', 'Advisor', 'Email', 'Address', 'Topic Data', 'Reason', 'Status', 'Student_File', 'Admin_File']);
+      logSheet.appendRow(['Timestamp', 'Username', 'File Name', 'Type', 'URL', 'File ID', 'Program', 'Gender', 'Year', 'Tel', 'Major', 'Advisor', 'Email', 'Address', 'Topic Data', 'Reason', 'Status', 'Student_File', 'Admin_File', 'Raw_Data']);
     }
     
-    if (logSheet.getLastColumn() < 19) {
-       logSheet.insertColumnsAfter(logSheet.getLastColumn(), 19 - logSheet.getLastColumn());
+    // Auto-expand columns to fit Raw_Data (Column 20)
+    if (logSheet.getLastColumn() < 20) {
+       logSheet.insertColumnsAfter(logSheet.getLastColumn(), 20 - logSheet.getLastColumn());
     }
+
+    // --- Save RAW JSON for Admin View Mode ---
+    const rawDataJSON = JSON.stringify(formData);
 
     logSheet.appendRow([
       new Date(), userInfo.username, fileName, reqType, pdfUrl, fileId, 
       formData.program, userInfo.gender, formData.year, "'" + formData.tel, formData.major, 
       formData.advisor, formData.email, formData.address, specificData, formData.reason_full,
-      'รอ', '', '' 
+      'รอ', '', '', rawDataJSON // Col 20: Raw Data
     ]);
-    
-    // แจ้งเตือน LINE (สร้างใหม่)
+
     try {
         const topicMap = {
           't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
@@ -369,50 +331,57 @@ function getRequestsData(user) {
   if (!user || !user.username) return [];
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  
-  // 1. ดึงข้อมูล Users มาทำ Map เพื่อหาชื่อและรหัสนักศึกษา
   const userSheet = ss.getSheetByName('Users');
   let userMap = {};
   if (userSheet) {
      const uData = userSheet.getDataRange().getValues();
-     // สมมติ: col 0=User, col 2=Name, col 3=Std_ID
      uData.forEach(r => {
         if(r[0]) userMap[r[0]] = { name: r[2], std_id: r[3] };
      });
   }
 
-  // 2. ดึงข้อมูล Logs
   let sheet = ss.getSheetByName('Logs');
   if(!sheet || sheet.getLastRow() < 2) return [];
-  
   const lastCol = sheet.getLastColumn();
   const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
   
   let requests = data.map(r => {
     try {
         let ts = r[0];
-        let timeStr = "-";
-        if (ts instanceof Date) {
-            timeStr = Utilities.formatDate(ts, "GMT+7", "dd/MM/yyyy HH:mm");
-        } else {
-            timeStr = String(ts || "-");
-        }
+        let timeStr = (ts instanceof Date) ? Utilities.formatDate(ts, "GMT+7", "dd/MM/yyyy HH:mm") : String(ts || "-");
         
         let username = String(r[1] || "");
         let userInfo = userMap[username] || { name: "-", std_id: "-" };
+        
+        // --- Parse RAW Data for View Mode ---
+        let rawData = {};
+        try {
+            if(r[19] && r[19] !== "") rawData = JSON.parse(r[19]);
+        } catch(e) {}
 
         return {
             timestamp: timeStr,
             username: username,
-            name: String(userInfo.name),       // เพิ่มชื่อ
-            std_id: String(userInfo.std_id),   // เพิ่มรหัสนักศึกษา
+            name: String(userInfo.name),
+            std_id: String(userInfo.std_id),
             fileName: String(r[2] || "ไม่มีชื่อไฟล์"),
             type: String(r[3] || ""),
             pdfUrl: String(r[4] || "#"),
             fileId: String(r[5] || ""),
+            program: String(r[6] || ""),
+            year: String(r[8] || ""),
+            tel: String(r[9] || "").replace(/'/g, ''),
+            major: String(r[10] || ""),
+            advisor: String(r[11] || ""),
+            email: String(r[12] || ""),
+            address: String(r[13] || ""),
+            reason: String(r[15] || ""),
             status: (r.length > 16) ? String(r[16] || "รอ") : "รอ",
             studentFile: (r.length > 17) ? String(r[17] || "") : "",
-            adminFile: (r.length > 18) ? String(r[18] || "") : ""
+            adminFile: (r.length > 18) ? String(r[18] || "") : "",
+            
+            // Spread raw form data for view mode
+            ...rawData
         };
     } catch (err) {
         return null;
@@ -442,17 +411,13 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
     if (sheet.getLastColumn() < 19) sheet.insertColumnsAfter(sheet.getLastColumn(), 19 - sheet.getLastColumn());
 
     if (uploaderRole === 'admin') {
-      // Admin อัปโหลดไฟล์ (เช่น ไฟล์ที่เซ็นแล้ว)
       sheet.getRange(rowIndex + 1, 19).setValue(fileUrl);
       sheet.getRange(rowIndex + 1, 17).setValue('เสร็จสิ้น');
     } else {
-      // นักศึกษาอัปโหลดไฟล์
       if (data[rowIndex][1] !== username) return { status: 'error', message: 'ไม่มีสิทธิ์' };
-      
       sheet.getRange(rowIndex + 1, 18).setValue(fileUrl);
-      sheet.getRange(rowIndex + 1, 17).setValue('รอเจ้าหน้าที่ตรวจสอบ'); // เปลี่ยนสถานะตาม Requirement
+      sheet.getRange(rowIndex + 1, 17).setValue('รอเจ้าหน้าที่ตรวจสอบ'); 
 
-      // --- แจ้งเตือน LINE เมื่อนักศึกษาส่งไฟล์ ---
       try {
         const topicMap = {
           't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
@@ -464,8 +429,6 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
         const r = data[rowIndex];
         const reqType = r[3];
         const topicName = topicMap[reqType] || reqType;
-        
-        // ดึงชื่อนักศึกษา (ต้องหาจาก Users เหมือนเดิม หรือถ้าไม่มีก็ใช้ username ไปก่อน)
         const userSheet = ss.getSheetByName('Users');
         const userData = userSheet.getDataRange().getValues();
         const userObj = userData.find(u => u[0] === username);
@@ -656,8 +619,7 @@ function doPost(e) {
          subject: "📌 ได้ Group ID แล้วครับ!",
          htmlBody: "<h3>ข้อมูลจาก LINE (" + type + ")</h3>" +
                    "<p><b>Group ID / User ID คือ:</b></p>" +
-                   "<h2>" 
-                   + id + "</h2>" +
+                   "<h2>" + id + "</h2>" +
                    "<hr>" +
                    "<p>ก๊อปปี้รหัสนี้ไปใส่ในตัวแปร <b>ADMIN_USER_ID</b> ในไฟล์ Code.gs ได้เลยครับ</p>"
        });
