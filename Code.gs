@@ -1,1113 +1,697 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JC Request Form</title>
+// --- CONFIGURATION ---
+const SPREADSHEET_ID = '1u8OaGgDcpgWdtaqTXpwWm8PX2b4I2Ovq93aKRuXol18'; 
+const TEMPLATE_SLIDE_ID = '1FEVxooVLLEmxUscy6dXiPZHPjqMn8Bu7NEAXdQ19k-w';
+const DESTINATION_FOLDER_ID = '1u1LpLsCDaUgwWYJIXn5L9D_a1sBhKoU7';
+
+// --- ROUTING & INIT ---
+function doGet(e) {
+  const template = HtmlService.createTemplateFromFile('index');
+  template.urlParams = JSON.stringify(e.parameter || {});
+  template.serverMessage = ""; 
+  template.serverStatus = "";
+
+  if (e.parameter && e.parameter.page === 'verify' && e.parameter.token) {
+    const result = verifyUserToken(e.parameter.token);
+    template.serverMessage = result.message;
+    template.serverStatus = result.status;
+  }
+
+  return template.evaluate()
+    .setTitle('ระบบคำร้องออนไลน์ (JC Form)')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function getScriptUrl() { return ScriptApp.getService().getUrl(); }
+function generateToken() { return Utilities.getUuid(); }
+
+function hashPassword(password, salt) {
+  // กรณีไม่มี salt (เผื่อข้อมูลเก่า) ให้เป็นค่าว่าง
+  if (salt == null) salt = ""; 
   
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+  // ผสม password กับ salt ก่อนเข้า SHA-256
+  const rawBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password + salt);
   
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  let txtHash = '';
+  for (let i = 0; i < rawBytes.length; i++) {
+    let hashVal = rawBytes[i];
+    if (hashVal < 0) hashVal += 256;
+    if (hashVal.toString(16).length == 1) txtHash += '0';
+    txtHash += hashVal.toString(16);
+  }
+  return txtHash;
+}
+
+// เพิ่มฟังก์ชันสร้าง Salt (ใช้ UUID เพราะไม่ซ้ำแน่นอน)
+function generateSalt() {
+  return Utilities.getUuid();
+}
+
+function sendEmail(to, subject, body) {
+  try {
+    MailApp.sendEmail({ to: to, subject: subject, htmlBody: body });
+  } catch(e) { console.log("Email Error: " + e.toString()); }
+}
+
+function getMOTD() {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('MOTD');
+    if (!sheet) return "";
+    return sheet.getRange(1, 1).getValue(); 
+  } catch (e) {
+    return "";
+  }
+}
+
+// --- USER MANAGEMENT ---
+function loginUser(username, password) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let userSheet = ss.getSheetByName('Users');
   
-  <style>
-    /* --- JCTU Theme Variables --- */
-    :root {
-      --jctu-primary: #76236C; /* สีม่วงเม็ดมะปราง */
-      --jctu-dark: #4a1243;
-      --jctu-light: #f3e5f5;
-      --jctu-bg-gradient: linear-gradient(135deg, #fdfbfd 0%, #f4ebf4 100%);
-    }
+  // ถ้ายังไม่มี Sheet ให้สร้างใหม่พร้อม Header ที่มี Salt
+  if (!userSheet) {
+    userSheet = ss.insertSheet('Users');
+    userSheet.appendRow(['Username', 'Password', 'Name', 'Std_ID', 'Email', 'Tel', 'Year', 'Gender', 'Token', 'Verified', 'Reset_Token', 'Reset_Exp', 'Role', 'Status', 'Salt']);
+    return { status: 'error', message: 'ระบบเพิ่งเริ่มต้น กรุณาสมัครสมาชิกใหม่' };
+  }
 
-    body { 
-      background: var(--jctu-bg-gradient); 
-      font-family: 'Sarabun', sans-serif; 
-      color: #333;
-      min-height: 100vh;
-    }
-
-    /* --- Overriding Bootstrap Colors --- */
-    .text-primary { color: var(--jctu-primary) !important; }
-    .bg-primary { background-color: var(--jctu-primary) !important; }
-    .btn-primary {
-      background-color: var(--jctu-primary);
-      border-color: var(--jctu-primary);
-      box-shadow: 0 4px 6px rgba(118, 35, 108, 0.2);
-      transition: all 0.2s ease;
-    }
-    .btn-primary:hover {
-      background-color: var(--jctu-dark);
-      border-color: var(--jctu-dark);
-      transform: translateY(-1px);
-    }
-    .btn-outline-primary {
-      color: var(--jctu-primary);
-      border-color: var(--jctu-primary);
-    }
-    .btn-outline-primary:hover {
-      background-color: var(--jctu-primary);
-      color: #fff;
-    }
-
-    /* --- UI Components --- */
-    .card { 
-      border: none; 
-      box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
-      border-radius: 16px; 
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
+  const data = userSheet.getDataRange().getValues();
+  
+  // 1. ค้นหาเฉพาะ Username ก่อน (ยังไม่เช็ค Password ตรงนี้)
+  const userRow = data.find(row => row[0] == username);
+  
+  if (userRow) {
+    // ตรวจสอบสถานะการยืนยันตัวตนและ Ban
+    if (String(userRow[9]).toUpperCase() !== 'TRUE') {
+      return { status: 'error', message: 'กรุณายืนยันตัวตนทาง Email ก่อน' };
     }
     
-    .logo-img {
-      max-height: 80px;
-      margin-bottom: 20px;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-    }
-
-    .navbar {
-      background: #fff !important;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      border-radius: 12px;
-    }
-
-    .form-control, .form-select {
-      border-radius: 8px;
-      border: 1px solid #e0e0e0;
-      padding: 0.6rem 0.8rem;
-    }
-    .form-control:focus, .form-select:focus {
-      border-color: var(--jctu-primary);
-      box-shadow: 0 0 0 0.25rem rgba(118, 35, 108, 0.15);
-    }
-
-    .hidden { display: none !important; }
-    .no-resize { resize: none !important; }
+    let role = (userRow.length > 12 && userRow[12]) ? userRow[12] : 'user';
+    let status = (userRow.length > 13 && userRow[13]) ? userRow[13] : 'active';
     
-    .char-count { font-size: 0.75rem; color: #999; display: block; text-align: right; margin-top: 4px; }
-    .char-count.limit-reached { color: #dc3545; font-weight: 600; }
-    
-    .loading-overlay { 
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-      background: rgba(255,255,255,0.85); z-index: 9999; 
-      display: flex; flex-direction: column; justify-content: center; align-items: center; 
+    if (String(status).toLowerCase() === 'banned') {
+      return { status: 'error', message: 'บัญชีของคุณถูกระงับการใช้งาน' };
     }
+
+    // --- ส่วนตรวจสอบรหัสผ่านแบบ Salted ---
+    const storedHash = userRow[1];      // รหัสผ่านที่ถูกแฮชใน DB
+    const storedSalt = userRow[14] || ""; // ดึง Salt จากคอลัมน์ที่ 15 (Index 14)
     
-    #sig-canvas { 
-      background: #fcfcfc; 
-      cursor: crosshair; 
-      touch-action: none; 
-      border: 2px dashed #ddd;
-      border-radius: 8px;
+    // เอาพาสที่กรอก + Salt ใน DB มาแฮชใหม่ แล้วเทียบกัน
+    if (hashPassword(password, storedSalt) === storedHash) {
+        return { 
+          status: 'success', 
+          username: userRow[0], 
+          name: userRow[2], 
+          std_id: userRow[3],
+          email: userRow[4], 
+          tel: userRow[5],
+          year: userRow[6],
+          gender: userRow[7],
+          role: role
+        };
     }
+  } 
+  
+  // ถ้าหา User ไม่เจอ หรือ Password ผิด
+  return { status: 'error', message: 'Username หรือ Password ไม่ถูกต้อง' };
+}
+
+function registerUser(formObject) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let userSheet = ss.getSheetByName('Users');
+  
+  // อัปเดต Header ให้มี Salt หากสร้าง Sheet ใหม่
+  if (!userSheet) {
+    userSheet = ss.insertSheet('Users');
+    userSheet.appendRow(['Username', 'Password', 'Name', 'Std_ID', 'Email', 'Tel', 'Year', 'Gender', 'Token', 'Verified', 'Reset_Token', 'Reset_Exp', 'Role', 'Status', 'Salt']);
+  }
+  
+  const data = userSheet.getDataRange().getValues();
+  if (data.some(row => row[0] === formObject.reg_username)) return { status: 'error', message: 'Username นี้ถูกใช้ไปแล้ว' };
+  if (data.some(row => row[4] === formObject.reg_email)) return { status: 'error', message: 'Email นี้ถูกใช้ไปแล้ว' };
+
+  // --- สร้าง Salt และ Hash ---
+  const salt = generateSalt(); 
+  const hashedPassword = hashPassword(formObject.reg_password, salt);
+  
+  const verifyToken = generateToken();
+  const verifyLink = `${getScriptUrl()}?page=verify&token=${verifyToken}`;
+
+  // บันทึกข้อมูล โดยเพิ่ม salt ต่อท้ายสุด (คอลัมน์ที่ 15)
+  userSheet.appendRow([
+    formObject.reg_username, 
+    hashedPassword, 
+    formObject.reg_name, 
+    formObject.reg_std_id,
+    formObject.reg_email, 
+    "'" + formObject.reg_tel, 
+    formObject.reg_year, 
+    formObject.reg_gender,
+    verifyToken, 
+    'FALSE', 
+    '', 
+    '', 
+    'user', 
+    'active',
+    salt // <--- เพิ่ม Salt ตรงนี้
+  ]);
+  
+  sendEmail(formObject.reg_email, 'ยืนยันการสมัคร', `<p><a href="${verifyLink}">คลิกยืนยันตัวตน</a></p>`);
+  return { status: 'success', message: 'สมัครสำเร็จ! กรุณาตรวจสอบ Email' };
+}
+
+function verifyUserToken(token) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const userSheet = ss.getSheetByName('Users');
+  const data = userSheet.getDataRange().getValues();
+  const rowIndex = data.findIndex(row => row[8] === token);
+  if (rowIndex > 0) {
+    userSheet.getRange(rowIndex + 1, 9).setValue('');
+    userSheet.getRange(rowIndex + 1, 10).setValue('TRUE'); 
+    return { status: 'success', message: 'ยืนยันตัวตนสำเร็จ!' };
+  }
+  return { status: 'error', message: 'ลิงก์ไม่ถูกต้อง' };
+}
+
+function requestPasswordReset(email) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const userSheet = ss.getSheetByName('Users');
+  const data = userSheet.getDataRange().getValues();
+  const rowIndex = data.findIndex(row => row[4] === email);
+  if (rowIndex > 0) {
+    const token = generateToken();
+    const link = `${getScriptUrl()}?page=reset&token=${token}`;
+    userSheet.getRange(rowIndex + 1, 11).setValue(token);
+    userSheet.getRange(rowIndex + 1, 12).setValue(new Date().getTime() + 3600000);
+    sendEmail(email, 'Reset Password', `<a href="${link}">Reset Password</a>`);
+  }
+  return { status: 'success', message: 'ส่งลิงก์แล้ว' };
+}
+
+function submitResetPassword(token, newPass) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const userSheet = ss.getSheetByName('Users');
+  const data = userSheet.getDataRange().getValues();
+  
+  // ค้นหาจาก Token
+  const rowIndex = data.findIndex(row => row[10] === token); // Index 10 = Reset_Token
+  
+  if (rowIndex > 0) {
+    if (new Date().getTime() > data[rowIndex][11]) return { status: 'error', message: 'ลิงก์หมดอายุ' };
     
-    /* Status Badges */
-    .status-wait { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-    .status-received { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-    .status-done { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    // --- สร้าง Salt ใหม่ ---
+    const newSalt = generateSalt();
+    const newHash = hashPassword(newPass, newSalt);
 
-    .history-item { border-left: 4px solid transparent; transition: bg 0.2s; }
-    .history-item:hover { background-color: #f8f9fa; }
+    // อัปเดต Password (คอลัมน์ 2)
+    userSheet.getRange(rowIndex + 1, 2).setValue(newHash);
+    // ล้าง Token
+    userSheet.getRange(rowIndex + 1, 11).setValue('');
+    // อัปเดต Salt ใหม่ (คอลัมน์ 15)
+    userSheet.getRange(rowIndex + 1, 15).setValue(newSalt);
     
-    .admin-panel { border-left: 5px solid var(--jctu-primary); }
-    .sortable { cursor: pointer; user-select: none; position: relative; }
-    .sortable:hover { background-color: #f1f1f1 !important; color: var(--jctu-primary); }
-    .sort-icon { font-size: 0.8rem; margin-left: 5px; color: #ccc; }
+    return { status: 'success', message: 'เปลี่ยนรหัสสำเร็จ' };
+  }
+  return { status: 'error', message: 'Token ผิด' };
+}
+
+function changePassword(user, oldPass, newPass) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const userSheet = ss.getSheetByName('Users');
+  const data = userSheet.getDataRange().getValues();
+  
+  // ค้นหา User (Row Index) จาก Username
+  const rowIndex = data.findIndex(row => row[0] == user);
+  
+  if(rowIndex > 0) {
+    const userData = data[rowIndex];
+    const storedHash = userData[1];
+    const storedSalt = userData[14] || ""; // ดึง Salt เดิม
     
-    /* Animations */
-    .fade-in { animation: fadeIn 0.4s ease-in-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* --- 🔥 Custom Styles for MOTD & Modals 🔥 --- */
-    .motd-box {
-      background-color: #fffdf5;
-      border: 1px solid #ffeeba;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 20px;
-      color: #856404;
-      font-size: 0.9rem;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-      display: flex; align-items: center;
-    }
-    .motd-box i { font-size: 1.2rem; margin-right: 10px; color: #ffc107; }
-
-    /* ปรับแต่ง Modal ให้สวยงาม */
-    .modal-content {
-      border-radius: 16px;
-      border: none;
-      box-shadow: 0 15px 40px rgba(0,0,0,0.2);
-    }
-    .modal-header { border-bottom: 1px solid rgba(0,0,0,0.05); }
-    .modal-footer { border-top: none; padding-top: 0; padding-bottom: 1.5rem; }
-  </style>
-</head>
-<body>
-
-<div id="loading" class="loading-overlay hidden">
-  <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="Loading..." style="width: 60px; margin-bottom: 15px;">
-  <div class="spinner-border text-primary" style="width: 2.5rem; height: 2.5rem;" role="status"></div>
-  <small class="text-muted mt-2">กำลังประมวลผล...</small>
-</div>
-
-<input type="file" id="file-input" class="hidden" accept="application/pdf,image/*">
-
-<div class="modal fade" id="customModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="customModalTitle">แจ้งเตือน</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body py-4" id="customModalBody">
-        </div>
-      <div class="modal-footer" id="customModalFooter">
-        </div>
-    </div>
-  </div>
-</div>
-
-<div class="container py-4">
-  <div id="server-alert" class="alert hidden text-center shadow-sm" role="alert"></div>
-
-  <div id="login-page" class="row justify-content-center align-items-center" style="min-height: 80vh;">
-    <div class="col-md-5 col-lg-4">
-      <div class="text-center fade-in">
-        <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="JC TU Logo" class="logo-img">
-        <h4 class="fw-bold mb-4" style="color: var(--jctu-primary);">ระบบคำร้องออนไลน์</h4>
-      </div>
-
-      <div id="motd-container" class="motd-box fade-in hidden">
-        <i class="bi bi-megaphone-fill"></i>
-        <div id="motd-text"></div>
-      </div>
-
-      <div class="card p-4 fade-in">
-        <h5 class="text-center mb-4 text-muted">เข้าสู่ระบบ / Login</h5>
-        <form id="loginForm">
-          <div class="form-floating mb-3">
-            <input type="text" class="form-control" id="u_name" placeholder="Username" required>
-            <label for="u_name">Username</label>
-          </div>
-          <div class="form-floating mb-3">
-            <input type="password" class="form-control" id="u_pass" placeholder="Password" required>
-            <label for="u_pass">Password</label>
-          </div>
-          <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">เข้าสู่ระบบ</button>
-        </form>
-        <div class="d-flex justify-content-between mt-4 small">
-          <a href="#" class="text-decoration-none text-muted" onclick="showPage('forgot-page')">ลืมรหัสผ่าน?</a>
-          <a href="#" class="text-decoration-none fw-bold text-primary" onclick="showPage('register-page')">ลงทะเบียนใหม่</a>
-        </div>
-      </div>
-      <div class="text-center mt-4 text-muted small">
-        &copy; Faculty of Journalism and Mass Communication
-      </div>
-    </div>
-  </div>
-
-  <div id="register-page" class="hidden row justify-content-center align-items-center" style="min-height: 80vh;">
-     <div class="col-md-6 fade-in">
-        <div class="text-center mb-3">
-          <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="JC TU Logo" style="height: 50px;">
-        </div>
-        <div class="card p-4">
-           <h4 class="text-primary fw-bold mb-3"><i class="bi bi-person-plus"></i> ลงทะเบียน</h4>
-           <div class="alert alert-light border small text-muted"><i class="bi bi-info-circle-fill text-primary"></i> โปรดใช้อีเมลจริง เพื่อรับลิงก์ยืนยันตัวตน</div>
-           
-           <form id="regForm">
-              <div class="row g-2">
-                <div class="col-6 mb-2">
-                   <label class="small text-muted">Username</label>
-                   <input type="text" name="reg_username" class="form-control" required>
-                </div>
-                <div class="col-6 mb-2">
-                   <label class="small text-muted">Password</label>
-                   <input type="password" name="reg_password" class="form-control" required>
-                </div>
-              </div>
-              
-              <div class="mb-2">
-                 <label class="small text-muted">ชื่อ-นามสกุล (ภาษาไทย)</label>
-                 <input type="text" name="reg_name" class="form-control" data-limit="30" required>
-              </div>
-              
-              <div class="mb-3">
-                <label class="small text-muted d-block">เพศ</label>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" name="reg_gender" value="male" required> <label>ชาย</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" name="reg_gender" value="female" required> <label>หญิง</label>
-                </div>
-              </div>
-
-              <div class="row g-2 mb-2">
-                <div class="col-8">
-                   <label class="small text-muted">รหัสนักศึกษา</label>
-                   <input type="tel" name="reg_std_id" class="form-control" data-limit="10" data-type="number" required>
-                </div>
-                <div class="col-4">
-                   <label class="small text-muted">ชั้นปี</label>
-                   <input type="tel" name="reg_year" class="form-control" data-limit="1" data-type="number" required>
-                </div>
-              </div>
-              
-              <div class="mb-2">
-                 <label class="small text-muted">เบอร์โทรศัพท์</label>
-                 <input type="tel" name="reg_tel" class="form-control" data-limit="10" data-type="number" required>
-              </div>
-              <div class="mb-4">
-                 <label class="small text-muted">Email (กรณีใช้เมล TU ให้ล็อกอินผ่าน Outlook เท่านั้น ห้ามใช้ Gmail)</label>
-                 <input type="email" name="reg_email" class="form-control" data-limit="60" required>
-              </div>
-              
-              <button class="btn btn-primary w-100 py-2">ยืนยันการสมัคร</button>
-              <div class="text-center mt-3">
-                 <a href="#" class="text-decoration-none text-muted" onclick="showPage('login-page')"><i class="bi bi-arrow-left"></i> กลับไปหน้าเข้าสู่ระบบ</a>
-              </div>
-           </form>
-        </div>
-     </div>
-  </div>
-
-  <div id="forgot-page" class="row justify-content-center align-items-center hidden" style="min-height: 80vh;">
-    <div class="col-md-5 col-lg-4 card p-4 fade-in">
-      <div class="text-center mb-3">
-         <i class="bi bi-key display-4 text-warning"></i>
-         <h4 class="mt-2">ลืมรหัสผ่าน</h4>
-      </div>
-      <form id="forgotForm">
-        <div class="mb-3">
-           <label class="form-label">กรอกอีเมลของคุณ</label>
-           <input type="email" id="forgot_email" class="form-control" placeholder="name@example.com" required>
-        </div>
-        <button type="submit" class="btn btn-warning w-100 text-white">ส่งลิงก์รีเซ็ต</button>
-        <div class="text-center mt-3"><a href="#" class="text-decoration-none" onclick="showPage('login-page')">ยกเลิก</a></div>
-      </form>
-    </div>
-  </div>
-
-  <div id="reset-page" class="row justify-content-center align-items-center hidden" style="min-height: 80vh;">
-    <div class="col-md-5 col-lg-4 card p-4 fade-in">
-      <h4 class="text-center mb-3 text-primary">ตั้งรหัสผ่านใหม่</h4>
-      <form id="resetForm">
-        <input type="hidden" id="reset_token">
-        <div class="mb-3">
-           <label class="small text-muted">รหัสผ่านใหม่</label>
-           <input type="password" id="new_reset_pass" class="form-control" required>
-        </div>
-        <div class="mb-4">
-           <label class="small text-muted">ยืนยันรหัสผ่านใหม่</label>
-           <input type="password" id="confirm_reset_pass" class="form-control" required>
-        </div>
-        <button type="submit" class="btn btn-primary w-100">บันทึกรหัสผ่าน</button>
-      </form>
-    </div>
-  </div>
-
-  <div id="app-page" class="hidden fade-in">
-    <nav class="navbar navbar-light px-4 mb-4 d-flex justify-content-between align-items-center sticky-top">
-      <div class="d-flex align-items-center">
-        <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="Logo" style="height: 40px; margin-right: 15px;">
-        <div class="lh-1">
-           <span class="d-block fw-bold text-primary">JC Request</span>
-           <span class="small text-muted">สวัสดี, <span id="disp_name"></span></span>
-        </div>
-        <span id="disp_gender" class="badge bg-light text-dark border ms-2 small d-none d-md-inline-block"></span>
-        <span id="disp_role" class="badge bg-dark ms-1 small"></span>
-      </div>
-      <div>
-        <button class="btn btn-light btn-sm me-1 text-muted border" onclick="showChangePassModal()" title="เปลี่ยนรหัส"><i class="bi bi-gear-fill"></i></button>
-        <button class="btn btn-outline-danger btn-sm" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
-      </div>
-    </nav>
-
-    <div id="admin-section" class="card p-4 mb-4 admin-panel hidden shadow-sm">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="text-primary m-0"><i class="bi bi-shield-lock-fill"></i> ผู้ดูแลระบบ (Admin Console)</h5>
-        <span class="badge bg-light text-dark border" id="admin-count">0 รายการ</span>
-      </div>
-
-      <div class="row g-2 mb-3">
-        <div class="col-md-8">
-          <div class="input-group">
-            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-            <input type="text" id="admin-search" class="form-control border-start-0 ps-0" placeholder="ค้นหา Username, หัวข้อ, หรือ สถานะ..." onkeyup="filterAdminTable()">
-          </div>
-        </div>
-        <div class="col-md-4 text-end">
-          <button class="btn btn-warning btn-sm text-white shadow-sm" onclick="promptBanUser()"><i class="bi bi-person-x"></i> Ban User</button>
-        </div>
-      </div>
-
-      <div class="table-responsive">
-        <table class="table table-hover table-sm small align-middle">
-          <thead class="table-light">
-            <tr>
-              <th class="sortable" onclick="sortAdminTable('timestamp')">วันเวลาส่ง <span id="sort-timestamp" class="sort-icon"></span></th>
-              <th class="sortable" onclick="sortAdminTable('std_id')">เลขทะเบียน <span id="sort-std_id" class="sort-icon"></span></th>
-              <th class="sortable" onclick="sortAdminTable('name')">ชื่อ-นามสกุล <span id="sort-name" class="sort-icon"></span></th>
-              <th class="sortable" onclick="sortAdminTable('topic')">หัวข้อ <span id="sort-topic" class="sort-icon"></span></th>
-              <th>File</th>
-              <th class="sortable" onclick="sortAdminTable('status')">Status <span id="sort-status" class="sort-icon"></span></th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="admin-table-body"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="change-pass-modal" class="card p-4 mb-4 border border-warning hidden shadow-sm" style="background-color: #fffdf5;">
-      <h6 class="text-warning mb-3"><i class="bi bi-key"></i> เปลี่ยนรหัสผ่าน</h6>
-      <form id="changePassForm">
-        <div class="row g-2 align-items-end">
-          <div class="col-md-4">
-             <label class="small text-muted">รหัสเดิม</label>
-             <input type="password" name="old_pass" class="form-control form-control-sm" required>
-          </div>
-          <div class="col-md-4">
-             <label class="small text-muted">รหัสใหม่</label>
-             <input type="password" name="new_pass" class="form-control form-control-sm" required>
-          </div>
-          <div class="col-md-4">
-             <button type="submit" class="btn btn-warning btn-sm w-100 text-white">บันทึกการเปลี่ยนแปลง</button>
-          </div>
-        </div>
-      </form>
-      <div class="text-end mt-2"><a href="#" class="small text-muted text-decoration-none" onclick="document.getElementById('change-pass-modal').classList.add('hidden')">ปิดหน้าต่างนี้</a></div>
-    </div>
-
-    <div class="row">
-      <div class="col-lg-7 mb-4">
+    // ตรวจสอบรหัสเก่า
+    if (hashPassword(oldPass, storedSalt) === storedHash) {
+        // --- ถ้ารหัสเก่าถูก ให้สร้าง Salt ใหม่สำหรับรหัสใหม่ ---
+        const newSalt = generateSalt();
+        const newHash = hashPassword(newPass, newSalt);
         
-        <div class="card p-3 mb-3 border-primary border-opacity-25" style="background-color: #fbf8fc;">
-          <label class="fw-bold small mb-2 text-primary"><i class="bi bi-magic"></i> เลือกแบบฟอร์มอัตโนมัติ (Template)</label>
-          <select id="template_select" class="form-select form-select-sm" onchange="applyTemplate()">
-            <option value="">-- ไม่ใช้ Template (กรอกเอง) --</option>
-          </select>
-        </div>
-
-        <div class="card p-4">
-          <div class="d-flex align-items-center mb-3 border-bottom pb-2">
-             <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">1</div>
-             <h5 class="m-0 text-primary fw-bold">ข้อมูลพื้นฐาน</h5>
-          </div>
-          
-          <form id="mainForm">
-            <div class="mb-4">
-              <label class="small fw-bold text-muted">ตั้งชื่อไฟล์ PDF (Optional)</label>
-              <input type="text" name="custom_filename" class="form-control bg-light" placeholder="เช่น คำร้องขอสอบ_นาย ก. (ถ้าไม่ใส่ระบบจะตั้งให้)">
-            </div>
-            
-            <div class="row g-3 mb-3">
-               <div class="col-md-12">
-                 <label class="small text-muted">หลักสูตร</label>
-                 <select name="program" class="form-select">
-                   <option value="Thai">ภาคปกติ (Thai)</option>
-                   <option value="BJM">โครงการพิเศษ (BJM)</option>
-                 </select>
-               </div>
-            </div>
-            
-            <div class="row g-3 mb-3">
-              <div class="col-md-4">
-                  <label class="small text-muted">ชั้นปีที่</label>
-                  <input type="tel" name="year" id="main_year" class="form-control" data-limit="1" data-type="number" required>
-              </div>
-              <div class="col-md-8">
-                  <label class="small text-muted">เบอร์โทรศัพท์</label>
-                  <input type="tel" name="tel" id="main_tel" class="form-control" data-limit="10" data-type="number" required>
-              </div>
-            </div>
-            
-            <div class="mb-3">
-                <label class="small text-muted">สาขาวิชาเอกปัจจุบัน</label>
-                <select name="major" id="major_main_dropdown" class="form-select" required></select>
-            </div>
-            <div class="mb-3">
-                <label class="small text-muted">อาจารย์ที่ปรึกษา</label>
-                <select name="advisor" id="advisor_dropdown" class="form-select"></select>
-            </div>
-            <div class="mb-3">
-                <label class="small text-muted">Email</label>
-                <input type="email" name="email" id="main_email" class="form-control" data-limit="60">
-            </div>
-            <div class="mb-4">
-                <label class="small text-muted">ที่อยู่ปัจจุบัน</label>
-                <textarea name="address" class="form-control no-resize" rows="2" data-limit="95"></textarea>
-            </div>
-            
-            <div class="d-flex align-items-center mb-3 border-bottom pb-2">
-             <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">2</div>
-             <h5 class="m-0 text-primary fw-bold">รายละเอียดคำร้อง</h5>
-            </div>
-            
-            <div class="mb-3">
-              <label class="fw-bold mb-2">เรื่องที่ต้องการยื่น</label>
-              <select name="request_type" class="form-select border-primary" onchange="toggleFields(this.value)" required>
-                <option value="">-- กรุณาเลือกหัวข้อ --</option>
-                <option value="t1">1. เลือกเรียนกลุ่มวิชา</option>
-                <option value="t2">2. ขอเปลี่ยนกลุ่มวิชา</option>
-                <option value="t3">3. ขอหนังสือรับรองความประพฤติ</option>
-                <option value="t4">4. ขออนุมัติย้ายคณะ</option>
-                <option value="t5">5. ขอลาออก</option>
-                <option value="t6">6. ขอคืนสภาพนักศึกษา</option>
-                <option value="t7">7. ขอใช้ห้องเรียน / สถานที่</option>
-                <option value="t8">8. ขออนุญาตใช้ห้อง</option>
-                <option value="t9">9. ขอยืมอุปกรณ์</option>
-                <option value="t10">10. อื่นๆ</option>
-              </select>
-            </div>
-            
-            <div id="dynamic-fields" class="bg-light p-4 rounded-3 mb-4 border shadow-sm">
-              <p class="text-muted text-center m-0 small" id="empty-msg"><i class="bi bi-arrow-up-circle"></i> เลือกหัวข้อด้านบนเพื่อกรอกข้อมูลเพิ่มเติม</p>
-              
-              <div class="d-field hidden" data-topic="t1">
-                <label class="small text-muted">วิชาเอกที่เลือกเรียน</label><select name="major_sel" class="form-select major-list"></select>
-              </div>
-              <div class="d-field hidden" data-topic="t2">
-                <label class="small text-muted">ย้ายจากเอก</label><select name="major_from" class="form-select major-list mb-2"></select>
-                <label class="small text-muted">ไปยังเอก</label><select name="major_to" class="form-select major-list"></select>
-              </div>
-              <div class="d-field hidden" data-topic="t3">
-                <label class="small text-muted">เสนออาจารย์</label><select name="prof_rec" class="form-select teacher-list mb-2"></select>
-                <label class="small text-muted">จำนวนฉบับ</label><input type="tel" name="r_no" class="form-control" data-limit="1" data-type="number">
-              </div>
-              <div class="d-field hidden" data-topic="t5">
-                <div class="row g-2">
-                   <div class="col-4"><label class="small text-muted">เทอม</label><input name="reg_sem" class="form-control" data-limit="1" data-type="number"></div>
-                   <div class="col-4"><label class="small text-muted">ปีการศึกษา</label><select name="reg_year" class="form-select year-list"></select></div>
-                   <div class="col-12"><label class="small text-muted">เหตุผลการลาออก</label><input name="reg_reasson" class="form-control" data-limit="30"></div>
-                </div>
-              </div>
-              <div class="d-field hidden" data-topic="t6">
-                 <div class="row g-2">
-                   <div class="col-6"><label class="small text-muted">เทอมขอคืนสภาพ</label><input name="re_ad" class="form-control" data-limit="1" data-type="number"></div>
-                   <div class="col-6"><label class="small text-muted">ปีขอคืนสภาพ</label><select name="re_ad_year" class="form-select year-list"></select></div>
-                 </div>
-              </div>
-              <div class="d-field hidden" data-topic="t7 t8">
-                 <label class="small text-muted">สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-limit="90">
-              </div>
-              <div class="d-field hidden" data-topic="t9">
-                 <label class="small text-muted">รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-limit="90">
-              </div>
-              <div class="d-field hidden" data-topic="t10">
-                 <label class="small text-muted">เรื่องอื่นๆ ระบุ</label><input name="other" class="form-control no-resize" data-limit="90">
-              </div>
-            </div>
-            
-            <div class="mb-4">
-              <label class="fw-bold mb-1">เหตุผลประกอบ</label>
-              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="280" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
-            </div>
-
-            <div class="mb-4 text-center p-3 border rounded bg-white">
-              <label class="fw-bold mb-2 d-block">ลงชื่อนักศึกษา (เซ็นในกรอบ)</label>
-              <canvas id="sig-canvas" width="300" height="120"></canvas>
-              <div class="mt-2">
-                 <button type="button" class="btn btn-sm btn-light border" onclick="clearSig()"><i class="bi bi-eraser"></i> ล้างลายเซ็น</button>
-              </div>
-              <input type="hidden" name="signature_data" id="signature_data">
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100 py-3 rounded-pill fw-bold shadow">
-               <i class="bi bi-file-earmark-plus"></i> สร้างและส่งคำร้อง (PDF)
-            </button>
-          </form>
-        </div>
-      </div>
-      
-      <div class="col-lg-5">
-        <div class="card p-3 h-100">
-          <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-             <h5 class="m-0 text-primary fw-bold"><i class="bi bi-clock-history"></i> ประวัติคำร้อง</h5>
-             <button class="btn btn-sm btn-outline-primary rounded-pill" onclick="loadRequests()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
-          </div>
-          
-          <div id="history-list" class="list-group list-group-flush small" style="max-height: 800px; overflow-y: auto;">
-             <div class="text-center text-muted py-5">
-                <div class="spinner-border text-light spinner-border-sm text-primary" role="status"></div> กำลังโหลด...
-             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-  // --- 🔥 Custom Modal Helper Functions 🔥 ---
-  let myModalObj = null;
-  document.addEventListener('DOMContentLoaded', () => {
-      const myModalEl = document.getElementById('customModal');
-      myModalObj = new bootstrap.Modal(myModalEl);
-  });
-
-  function showAlert(msg, title = 'แจ้งเตือน', callback = null) {
-      document.getElementById('customModalTitle').innerText = title;
-      document.getElementById('customModalBody').innerHTML = `<p class="m-0 fs-6">${msg}</p>`;
-      document.getElementById('customModalFooter').innerHTML = `<button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">ตกลง</button>`;
-      
-      const el = document.getElementById('customModal');
-      if(callback) {
-          const handler = () => {
-              callback();
-              el.removeEventListener('hidden.bs.modal', handler);
-          };
-          el.addEventListener('hidden.bs.modal', handler);
-      }
-      myModalObj.show();
-  }
-
-  function showConfirm(msg, onConfirm) {
-      document.getElementById('customModalTitle').innerText = 'ยืนยันการทำรายการ';
-      document.getElementById('customModalBody').innerHTML = `<p class="m-0 fs-6">${msg}</p>`;
-      document.getElementById('customModalFooter').innerHTML = `
-          <button type="button" class="btn btn-light border" data-bs-dismiss="modal">ยกเลิก</button>
-          <button type="button" class="btn btn-primary px-4" id="modalConfirmBtn">ยืนยัน</button>
-      `;
-      myModalObj.show();
-      document.getElementById('modalConfirmBtn').onclick = () => {
-          myModalObj.hide();
-          onConfirm();
-      };
-  }
-
-  function showPrompt(msg, placeholder, onConfirm) {
-      document.getElementById('customModalTitle').innerText = 'ระบุข้อมูล';
-      document.getElementById('customModalBody').innerHTML = `
-          <label class="form-label text-muted small">${msg}</label>
-          <input type="text" id="modalPromptInput" class="form-control" placeholder="${placeholder}">
-      `;
-      document.getElementById('customModalFooter').innerHTML = `
-          <button type="button" class="btn btn-light border" data-bs-dismiss="modal">ยกเลิก</button>
-          <button type="button" class="btn btn-primary px-4" id="modalPromptBtn">ตกลง</button>
-      `;
-      myModalObj.show();
-      
-      const el = document.getElementById('customModal');
-      const handler = () => {
-           document.getElementById('modalPromptInput').focus();
-           el.removeEventListener('shown.bs.modal', handler);
-      };
-      el.addEventListener('shown.bs.modal', handler);
-
-      document.getElementById('modalPromptBtn').onclick = () => {
-          const val = document.getElementById('modalPromptInput').value;
-          if(val) {
-               myModalObj.hide();
-               onConfirm(val);
-          }
-      };
-  }
-
-  // --- End Custom Modal Helpers ---
-
-  let currentUser = null;
-  let globalTemplates = [];
-  let currentUploadFileId = null;
-  let adminDataList = [];
-  let currentSort = { col: 'timestamp', order: 'desc' };
-
-  const SESSION_KEY = 'JC_FORM_SESSION';
-  const SESSION_DURATION = 5 * 60 * 1000; 
-
-  function saveSession(userData) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({
-      user: userData,
-      expiry: new Date().getTime() + SESSION_DURATION
-    }));
-  }
-
-  function checkSession() {
-    const sessionString = localStorage.getItem(SESSION_KEY);
-    if (!sessionString) return null;
-    const session = JSON.parse(sessionString);
-    if (new Date().getTime() > session.expiry) {
-      localStorage.removeItem(SESSION_KEY);
-      return null;
+        // อัปเดต Password
+        userSheet.getRange(rowIndex + 1, 2).setValue(newHash);
+        // อัปเดต Salt
+        userSheet.getRange(rowIndex + 1, 15).setValue(newSalt);
+        
+        return { status: 'success', message: 'เปลี่ยนรหัสเรียบร้อย' };
     }
-    return session.user;
   }
+  return { status: 'error', message: 'รหัสเดิมผิด' };
+}
 
-  const TOPIC_MAP = {
-      't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา', 't3': 'ขอใบรับรองความประพฤติ',
-      't4': 'ขออนุมัติย้ายคณะ', 't5': 'ขอลาออก', 't6': 'ขอคืนสภาพนักศึกษา',
-      't7': 'ขอใช้สถานที่', 't8': 'ขออนุญาตใช้ห้อง', 't9': 'ขอยืมอุปกรณ์', 't10': 'อื่นๆ'
-  };
+function processForm(formData, userInfo) {
+  try {
+    const destFolder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
+    const templateFile = DriveApp.getFileById(TEMPLATE_SLIDE_ID);
+    let fileName = formData.custom_filename || `Request_${userInfo.std_id}_${new Date().getTime()}`;
+    const copyFile = templateFile.makeCopy(fileName, destFolder);
+    const copyId = copyFile.getId();
+    const slide = SlidesApp.openById(copyId);
+    
+    if (formData.signature_data) {
+      const firstSlide = slide.getSlides()[0];
+      replaceTextWithImage(firstSlide, '{{signature}}', formData.signature_data);
+    }
+
+    let fullText = formData.reason_full || "";
+    let res_1 = truncate(fullText, 40);
+    fullText = fullText.substring(res_1.length);
+    let res_2 = truncate(fullText, 120);
+    fullText = fullText.substring(res_2.length);
+    let res_3 = truncate(fullText, 120);
+
+    let reqType = formData.request_type;
+    const val = (topic, value) => (reqType === topic || (Array.isArray(topic) && topic.includes(reqType))) ? value : "";
+    const replace = (key, value) => slide.replaceAllText(`{{${key}}}`, value || " ");
+    const tick = "✓";
+    replace('male', userInfo.gender === 'male' ? tick : "");
+    replace('female', userInfo.gender === 'female' ? tick : "");
+    replace('BJM', formData.program === 'BJM' ? tick : "");
+    replace('Thai', formData.program === 'Thai' ? tick : "");
+    for(let i=1; i<=10; i++) replace(`t${i}`, (reqType === `t${i}`) ? tick : "");
+
+    replace('name', truncate(userInfo.name, 30));
+    replace('std_id', truncate(userInfo.std_id, 10));
+    replace('Year', truncate(formData.year, 1));
+    replace('advisor', formData.advisor);
+    replace('major', truncate(formData.major, 30)); 
+    replace('address', truncate(formData.address, 95));
+    replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 10));
+    replace('email', truncate(formData.email, 60));
+    
+    let specificData = "";
+    specificData += truncate(val('t1', formData.major_sel), 40);
+    specificData += truncate(val('t2', formData.major_from), 40) + " " + truncate(val('t2', formData.major_to), 40);
+    specificData += truncate(val('t3', formData.prof_rec), 30) + " (" + truncate(val('t3', formData.r_no), 1) + ")";
+    specificData += truncate(val('t5', formData.reg_sem), 1) + "/" + truncate(val('t5', formData.reg_year), 4) + " " + truncate(val('t5', formData.reg_reasson), 30);
+    specificData += truncate(val('t6', formData.re_ad), 1) + "/" + truncate(val('t6', formData.re_ad_year), 4);
+    specificData += truncate(val(['t7', 't8'], formData.location), 80);
+    specificData += truncate(val('t9', formData.items), 80);
+    specificData += truncate(val('t10', formData.other), 90);
+
+    replace('major_sel',  truncate(val('t1', formData.major_sel), 40));
+    replace('major_from', truncate(val('t2', formData.major_from), 40));
+    replace('major_to',   truncate(val('t2', formData.major_to), 40));
+    replace('prof_rec',   truncate(val('t3', formData.prof_rec), 30));
+    replace('r_no',       truncate(val('t3', formData.r_no), 1));
+    replace('reg_sem',    truncate(val('t5', formData.reg_sem), 1));
+    replace('reg_year',   truncate(val('t5', formData.reg_year), 4));
+    replace('reg_reasson',truncate(val('t5', formData.reg_reasson), 30));
+    replace('re_ad',      truncate(val('t6', formData.re_ad), 1));
+    replace('re_ad_year', truncate(val('t6', formData.re_ad_year), 4));
+    replace('location',   truncate(val(['t7', 't8'], formData.location), 80));
+    replace('items',      truncate(val('t9', formData.items), 80));
+    replace('other',      truncate(val('t10', formData.other), 90));
+
+    replace('res_1', res_1);
+    replace('res_2', res_2);
+    replace('res_3', res_3);
+
+    slide.saveAndClose();
+
+    const pdfBlob = DriveApp.getFileById(copyId).getAs('application/pdf');
+    const pdfFile = destFolder.createFile(pdfBlob);
+    const pdfUrl = pdfFile.getUrl();
+    const fileId = pdfFile.getId();
+
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let logSheet = ss.getSheetByName('Logs');
+    if(!logSheet) { 
+      logSheet = ss.insertSheet('Logs');
+      logSheet.appendRow(['Timestamp', 'Username', 'File Name', 'Type', 'URL', 'File ID', 'Program', 'Gender', 'Year', 'Tel', 'Major', 'Advisor', 'Email', 'Address', 'Topic Data', 'Reason', 'Status', 'Student_File', 'Admin_File']);
+    }
+    
+    if (logSheet.getLastColumn() < 19) {
+       logSheet.insertColumnsAfter(logSheet.getLastColumn(), 19 - logSheet.getLastColumn());
+    }
+
+    logSheet.appendRow([
+      new Date(), userInfo.username, fileName, reqType, pdfUrl, fileId, 
+      formData.program, userInfo.gender, formData.year, "'" + formData.tel, formData.major, 
+      formData.advisor, formData.email, formData.address, specificData, formData.reason_full,
+      'รอ', '', '' 
+    ]);
+    
+    // แจ้งเตือน LINE (สร้างใหม่)
+    try {
+        const topicMap = {
+          't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
+          't3': 'ขอหนังสือรับรองความประพฤติ', 't4': 'ขออนุมัติย้ายคณะ',
+          't5': 'ขอลาออก', 't6': 'ขอคืนสภาพนักศึกษา',
+          't7': 'ขอใช้ห้องเรียน / สถานที่', 't8': 'ขออนุญาตใช้ห้อง',
+          't9': 'ขอยืมอุปกรณ์', 't10': 'อื่นๆ'
+        };
+        const topicName = topicMap[reqType] || reqType;
+        const lineMsg = `🔔 มีคำร้องใหม่!\n` +
+                        `👤 ชื่อ: ${userInfo.name} (${userInfo.std_id})\n` +
+                        `📝 เรื่อง: ${topicName}\n` +
+                        `📂 PDF: ${pdfUrl}`;
+        sendLinePushMessage(lineMsg);
+
+    } catch(err) {
+        console.log("LINE Alert Error: " + err);
+    }
+
+    return { status: 'success', url: pdfUrl };
+  } catch (e) { return { status: 'error', message: 'Error: ' + e.toString() };
+  }
+}
+
+function getRequestsData(user) {
+  if (!user || !user.username) return [];
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   
-  const urlParams = <?!= urlParams ?> || {};
-  const serverMsg = "<?= serverMessage ?>";
-  const serverStatus = "<?= serverStatus ?>";
+  // 1. ดึงข้อมูล Users มาทำ Map เพื่อหาชื่อและรหัสนักศึกษา
+  const userSheet = ss.getSheetByName('Users');
+  let userMap = {};
+  if (userSheet) {
+     const uData = userSheet.getDataRange().getValues();
+     // สมมติ: col 0=User, col 2=Name, col 3=Std_ID
+     uData.forEach(r => {
+        if(r[0]) userMap[r[0]] = { name: r[2], std_id: r[3] };
+     });
+  }
 
-  window.onload = function() {
-    loadMOTD();
-
-    if (serverMsg && serverMsg !== 'undefined') {
-      const alertBox = document.getElementById('server-alert');
-      alertBox.className = `alert alert-${serverStatus === 'success' ? 'success' : 'danger'}`;
-      alertBox.innerText = serverMsg;
-      alertBox.classList.remove('hidden');
-    }
-
-    if (urlParams.page === 'reset' && urlParams.token) {
-      document.getElementById('reset_token').value = urlParams.token;
-      showPage('reset-page');
-    } else {
-        const savedUser = checkSession();
-        if (savedUser) {
-            setupAppUI(savedUser); 
+  // 2. ดึงข้อมูล Logs
+  let sheet = ss.getSheetByName('Logs');
+  if(!sheet || sheet.getLastRow() < 2) return [];
+  
+  const lastCol = sheet.getLastColumn();
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
+  
+  let requests = data.map(r => {
+    try {
+        let ts = r[0];
+        let timeStr = "-";
+        if (ts instanceof Date) {
+            timeStr = Utilities.formatDate(ts, "GMT+7", "dd/MM/yyyy HH:mm");
         } else {
-            showPage('login-page');
+            timeStr = String(ts || "-");
         }
+        
+        let username = String(r[1] || "");
+        let userInfo = userMap[username] || { name: "-", std_id: "-" };
+
+        return {
+            timestamp: timeStr,
+            username: username,
+            name: String(userInfo.name),       // เพิ่มชื่อ
+            std_id: String(userInfo.std_id),   // เพิ่มรหัสนักศึกษา
+            fileName: String(r[2] || "ไม่มีชื่อไฟล์"),
+            type: String(r[3] || ""),
+            pdfUrl: String(r[4] || "#"),
+            fileId: String(r[5] || ""),
+            status: (r.length > 16) ? String(r[16] || "รอ") : "รอ",
+            studentFile: (r.length > 17) ? String(r[17] || "") : "",
+            adminFile: (r.length > 18) ? String(r[18] || "") : ""
+        };
+    } catch (err) {
+        return null;
     }
-    initInputConstraints();
-  };
-
-  function loadMOTD() {
-    google.script.run.withSuccessHandler(msg => {
-      if (msg && msg.trim() !== "") {
-        document.getElementById('motd-text').innerText = msg;
-        document.getElementById('motd-container').classList.remove('hidden');
-      }
-    }).getMOTD();
+  }).filter(item => item !== null);
+  
+  if (user.role !== 'admin') {
+    requests = requests.filter(r => r.username === user.username);
   }
+  
+  return requests.reverse();
+}
 
-  function setupAppUI(user) {
-    currentUser = user;
-    document.getElementById('disp_name').innerText = user.name;
-    document.getElementById('disp_gender').innerText = user.gender === 'male' ? 'ชาย' : 'หญิง';
-    
-    if(user.role === 'admin') {
-       document.getElementById('admin-section').classList.remove('hidden');
-       document.getElementById('disp_role').innerText = 'Admin';
+function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username) {
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('Logs');
+    const data = sheet.getDataRange().getValues();
+    const rowIndex = data.findIndex(row => row[5] === relatedFileId);
+    if (rowIndex <= 0) return { status: 'error', message: 'ไม่พบรายการ' };
+
+    const splitBase = base64Data.split(',');
+    const blob = Utilities.newBlob(Utilities.base64Decode(splitBase[1]), fileType, `Upload_${new Date().getTime()}`);
+    const folder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
+    const file = folder.createFile(blob);
+    const fileUrl = file.getUrl();
+    if (sheet.getLastColumn() < 19) sheet.insertColumnsAfter(sheet.getLastColumn(), 19 - sheet.getLastColumn());
+
+    if (uploaderRole === 'admin') {
+      // Admin อัปโหลดไฟล์ (เช่น ไฟล์ที่เซ็นแล้ว)
+      sheet.getRange(rowIndex + 1, 19).setValue(fileUrl);
+      sheet.getRange(rowIndex + 1, 17).setValue('เสร็จสิ้น');
     } else {
-       document.getElementById('admin-section').classList.add('hidden');
-    }
+      // นักศึกษาอัปโหลดไฟล์
+      if (data[rowIndex][1] !== username) return { status: 'error', message: 'ไม่มีสิทธิ์' };
+      
+      sheet.getRange(rowIndex + 1, 18).setValue(fileUrl);
+      sheet.getRange(rowIndex + 1, 17).setValue('รอเจ้าหน้าที่ตรวจสอบ'); // เปลี่ยนสถานะตาม Requirement
 
-    document.getElementById('main_year').value = user.year || '';
-    document.getElementById('main_tel').value = user.tel || '';
-    document.getElementById('main_email').value = user.email || '';
-    
-    showPage('app-page');
-    initData();
-    loadRequests();
-  }
-
-  function showPage(pid) {
-    document.querySelectorAll('.container > div[id$="-page"]').forEach(d => d.classList.add('hidden'));
-    document.getElementById(pid).classList.remove('hidden');
-    if(pid === 'app-page' || pid === 'register-page') setTimeout(initInputConstraints, 100);
-  }
-  function showChangePassModal() { document.getElementById('change-pass-modal').classList.remove('hidden'); }
-  function toggleLoad(s) { document.getElementById('loading').classList.toggle('hidden', !s); }
-  
-  function logout() { 
-      localStorage.removeItem(SESSION_KEY); 
-      location.reload(); 
-  }
-
-  // --- LOGIC ---
-  document.getElementById('loginForm').addEventListener('submit', e => {
-    e.preventDefault(); toggleLoad(true);
-    google.script.run.withSuccessHandler(res => {
-      toggleLoad(false);
-      if(res.status === 'success') {
-        saveSession(res);
-        setupAppUI(res);
-      } else showAlert(res.message, 'เข้าสู่ระบบไม่สำเร็จ');
-    }).loginUser(document.getElementById('u_name').value, document.getElementById('u_pass').value);
-  });
-
-  document.getElementById('regForm').addEventListener('submit', function(e) {
-    e.preventDefault(); toggleLoad(true);
-    const data = {}; new FormData(this).forEach((v,k)=>data[k]=v);
-    google.script.run.withSuccessHandler(res => { 
-        toggleLoad(false); 
-        showAlert(res.message, res.status==='success' ? 'สำเร็จ' : 'ข้อผิดพลาด', () => {
-            if(res.status==='success') showPage('login-page');
-        });
-    }).registerUser(data);
-  });
-
-  document.getElementById('forgotForm').addEventListener('submit', e => {
-    e.preventDefault(); toggleLoad(true);
-    google.script.run.withSuccessHandler(res => { 
-        toggleLoad(false); 
-        showAlert(res.message, 'ผลการดำเนินการ', () => {
-            if(res.status==='success') showPage('login-page');
-        });
-    }).requestPasswordReset(document.getElementById('forgot_email').value);
-  });
-
-  document.getElementById('resetForm').addEventListener('submit', e => {
-    e.preventDefault(); 
-    if(document.getElementById('new_reset_pass').value !== document.getElementById('confirm_reset_pass').value) return showAlert('รหัสผ่านไม่ตรงกัน', 'ข้อผิดพลาด');
-    toggleLoad(true);
-    google.script.run.withSuccessHandler(res => { 
-        toggleLoad(false); 
-        showAlert(res.message, 'สำเร็จ', () => {
-            if(res.status==='success') window.location.href="<?= getScriptUrl() ?>"; 
-        });
-    }).submitResetPassword(document.getElementById('reset_token').value, document.getElementById('new_reset_pass').value);
-  });
-
-  document.getElementById('changePassForm').addEventListener('submit', function(e) {
-    e.preventDefault(); toggleLoad(true);
-    const data = new FormData(this);
-    google.script.run.withSuccessHandler(res => { 
-        toggleLoad(false); 
-        showAlert(res.message, res.status==='success'?'สำเร็จ':'ข้อผิดพลาด');
-        if(res.status==='success'){ this.reset(); document.getElementById('change-pass-modal').classList.add('hidden'); } 
-    }).changePassword(currentUser.username, data.get('old_pass'), data.get('new_pass'));
-  });
-
-  document.getElementById('mainForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    if(!currentUser) return;
-    saveSig(); toggleLoad(true);
-    const data = {}; new FormData(this).forEach((v,k)=>data[k]=v);
-    google.script.run.withSuccessHandler(res => {
-      toggleLoad(false);
-      if(res.status === 'success') {
-        showConfirm('✅ สร้างคำร้องสำเร็จ! ต้องการเปิดดู PDF เลยหรือไม่?', () => {
-            window.open(res.url);
-        });
+      // --- แจ้งเตือน LINE เมื่อนักศึกษาส่งไฟล์ ---
+      try {
+        const topicMap = {
+          't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
+          't3': 'ขอหนังสือรับรองความประพฤติ', 't4': 'ขออนุมัติย้ายคณะ',
+          't5': 'ขอลาออก', 't6': 'ขอคืนสภาพนักศึกษา',
+          't7': 'ขอใช้ห้องเรียน / สถานที่', 't8': 'ขออนุญาตใช้ห้อง',
+          't9': 'ขอยืมอุปกรณ์', 't10': 'อื่นๆ'
+        };
+        const r = data[rowIndex];
+        const reqType = r[3];
+        const topicName = topicMap[reqType] || reqType;
         
-        loadRequests(); clearSig(); this.reset();
-        document.getElementById('main_year').value = currentUser.year || '';
-        document.getElementById('main_tel').value = currentUser.tel || '';
-        document.getElementById('main_email').value = currentUser.email || '';
-        document.querySelectorAll('.char-count').forEach(el => el.innerText = `0 / ${el.innerText.split(' / ')[1]}`);
-      } else showAlert(res.message, 'เกิดข้อผิดพลาด');
-    }).withFailureHandler(e => { toggleLoad(false); showAlert(e, 'Error'); }).processForm(data, currentUser);
-  });
+        // ดึงชื่อนักศึกษา (ต้องหาจาก Users เหมือนเดิม หรือถ้าไม่มีก็ใช้ username ไปก่อน)
+        const userSheet = ss.getSheetByName('Users');
+        const userData = userSheet.getDataRange().getValues();
+        const userObj = userData.find(u => u[0] === username);
+        const nameShow = userObj ? `${userObj[2]} (${userObj[3]})` : username;
 
-  function loadRequests() {
-    if(!currentUser) return;
-    document.getElementById('history-list').innerHTML = '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> กำลังโหลดข้อมูล...</div>';
-    
-    google.script.run.withSuccessHandler(data => {
-      renderHistory(data);
-      if(currentUser.role === 'admin') {
-          adminDataList = data;
-          renderAdminTable(adminDataList);
+        const lineMsg = `🔄 Updated นักศึกษาส่งไฟล์ใหม่แล้ว!\n` +
+                        `กำลังรอรับเจ้าหน้าที่รับเรื่อง\n` +
+                        `👤 จาก: ${nameShow}\n` +
+                        `📝 เรื่อง: ${topicName}\n` +
+                        `📂 ไฟล์แนบ: ${fileUrl}`;
+        sendLinePushMessage(lineMsg);
+      } catch(err) {
+        console.log("LINE Update Error: " + err);
       }
-    }).getRequestsData(currentUser);
-  }
-
-  function renderHistory(list) {
-    const el = document.getElementById('history-list');
-    if(!list.length) { 
-        el.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-inbox display-4 d-block mb-2" style="opacity:0.3"></i>ยังไม่มีประวัติคำร้อง</div>'; 
-        return; 
     }
-    
-    el.innerHTML = list.map(i => {
-      let badge = `<span class="badge status-wait rounded-pill"><i class="bi bi-hourglass-split"></i> รอ</span>`;
-      if(i.status === 'รับเรื่องแล้ว') badge = `<span class="badge status-received rounded-pill"><i class="bi bi-check2"></i> รับเรื่องแล้ว</span>`;
-      if(i.status === 'เสร็จสิ้น') badge = `<span class="badge status-done rounded-pill"><i class="bi bi-check-circle-fill"></i> เสร็จสิ้น</span>`;
-      if(i.status === 'รอเจ้าหน้าที่ตรวจสอบ') badge = `<span class="badge bg-warning text-dark rounded-pill"><i class="bi bi-search"></i> รอตรวจสอบ</span>`;
-      if(i.status === 'แก้ไข') badge = `<span class="badge bg-danger rounded-pill"><i class="bi bi-exclamation-circle"></i> แก้ไข</span>`;
 
-      let adminFileLink = i.adminFile ? `<div class="mt-2"><a href="${i.adminFile}" target="_blank" class="btn btn-success btn-sm w-100 shadow-sm"><i class="bi bi-file-earmark-check"></i> ดาวน์โหลดเอกสาร (ฉบับสมบูรณ์)</a></div>` : '';
+    return { status: 'success', message: 'อัปโหลดสำเร็จ' };
+  } catch (e) { return { status: 'error', message: e.toString() }; }
+}
 
-      return `
-        <div class="list-group-item py-3 px-2 history-item border-bottom">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div style="flex:1;">
-               <strong class="d-block text-dark text-truncate" style="max-width:180px;">${i.fileName}</strong>
-               <small class="text-muted"><i class="bi bi-calendar"></i> ${i.timestamp}</small>
-            </div>
-            ${badge}
-          </div>
-          <div class="small bg-light p-2 rounded">
-             <i class="bi bi-tag-fill text-secondary"></i> ${i.type}
-          </div>
-          <div class="mt-2 d-flex gap-2">
-             <a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-file-pdf"></i> ต้นฉบับ</a>
-             ${i.studentFile ? `<a href="${i.studentFile}" target="_blank" class="btn btn-sm btn-outline-info flex-grow-1"><i class="bi bi-file-earmark-arrow-up"></i> ไฟล์แนบ</a>` : ''}
-          </div>
-          ${adminFileLink}
-          <div class="mt-2 pt-2 border-top">
-             <button class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="triggerUpload('${i.fileId}')">
-               <i class="bi bi-upload"></i> อัปโหลดไฟล์ที่ต้องการส่ง
-             </button>
-             <div class="d-flex justify-content-end gap-1">
-               <button class="btn btn-sm btn-light border text-warning" onclick="renameItem('${i.fileId}')" title="แก้ไขชื่อ"><i class="bi bi-pencil"></i></button>
-               <button class="btn btn-sm btn-light border text-danger" onclick="deleteItem('${i.fileId}')" title="ลบรายการ"><i class="bi bi-trash"></i></button>
-             </div>
-          </div>
-        </div>`;
-    }).join('');
+function adminUpdateStatus(fileId, newStatus) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Logs');
+  const data = sheet.getDataRange().getValues();
+  const rowIndex = data.findIndex(r => r[5] === fileId);
+  if (rowIndex > 0) {
+    if (sheet.getLastColumn() < 17) sheet.insertColumnsAfter(sheet.getLastColumn(), 17 - sheet.getLastColumn());
+    sheet.getRange(rowIndex + 1, 17).setValue(newStatus);
+    return 'อัปเดตสถานะเรียบร้อย';
   }
+  return 'ไม่พบรายการ';
+}
 
-  function renderAdminTable(list) {
-    const tbody = document.getElementById('admin-table-body');
-    document.getElementById('admin-count').innerText = `${list.length} รายการ`;
-    if(list.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">ไม่พบข้อมูลคำร้อง</td></tr>'; return; }
+function adminBanUser(targetEmail) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Users');
+  const data = sheet.getDataRange().getValues();
+  const rowIndex = data.findIndex(r => r[4] === targetEmail);
+  if (rowIndex > 0) {
+    if (sheet.getLastColumn() < 14) sheet.insertColumnsAfter(sheet.getLastColumn(), 14 - sheet.getLastColumn());
+    sheet.getRange(rowIndex + 1, 14).setValue('banned');
+    return `ระงับการใช้งาน ${targetEmail} แล้ว`;
+  }
+  return 'ไม่พบ Email นี้';
+}
 
-    tbody.innerHTML = list.map(i => {
-        const topicName = TOPIC_MAP[i.type] || i.type || '-';
-        
-        let statusBadgeClass = '';
-        if(i.status === 'รอ') statusBadgeClass = 'bg-warning text-dark';
-        else if(i.status === 'รอเจ้าหน้าที่ตรวจสอบ') statusBadgeClass = 'bg-warning text-dark border border-danger'; // เน้นหน่อย
-        else if(i.status === 'รับเรื่องแล้ว') statusBadgeClass = 'bg-info text-white';
-        else if(i.status === 'แก้ไข') statusBadgeClass = 'bg-danger text-white';
-        else if(i.status === 'เสร็จสิ้น') statusBadgeClass = 'bg-success text-white';
-        else statusBadgeClass = 'bg-secondary text-white';
+function deleteHistory(fileId, username) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const userSheet = ss.getSheetByName('Users');
+  const userRows = userSheet.getDataRange().getValues();
+  const currentUser = userRows.find(row => row[0] === username);
+  const isAdmin = currentUser && currentUser[12] === 'admin'; 
 
-        return `
-      <tr class="align-middle">
-        <td class="text-nowrap text-muted small">${i.timestamp}</td>
-        <td class="text-primary fw-bold">${i.std_id}</td>
-        <td>${i.name}</td>
-        <td><span class="badge bg-light text-dark border fw-normal">${topicName}</span></td>
-        <td><a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-light border"><i class="bi bi-file-pdf text-danger"></i> PDF</a></td>
-        <td>
-          <select class="form-select form-select-sm badge ${statusBadgeClass} border-0" 
-                  style="width:auto; cursor:pointer; padding-right: 2rem;" 
-                  onchange="changeStatus('${i.fileId}', this.value); updateBadgeColor(this)">
-            <option value="รอ" class="bg-white text-dark" ${i.status==='รอ'?'selected':''}>รอ</option>
-            <option value="รอเจ้าหน้าที่ตรวจสอบ" class="bg-white text-dark" ${i.status==='รอเจ้าหน้าที่ตรวจสอบ'?'selected':''}>รอตรวจสอบ</option>
-            <option value="รับเรื่องแล้ว" class="bg-white text-dark" ${i.status==='รับเรื่องแล้ว'?'selected':''}>รับเรื่องแล้ว</option>
-            <option value="แก้ไข" class="bg-white text-dark" ${i.status==='แก้ไข'?'selected':''}>แก้ไข</option>
-            <option value="เสร็จสิ้น" class="bg-white text-dark" ${i.status==='เสร็จสิ้น'?'selected':''}>เสร็จสิ้น</option>
-          </select>
-        </td>
-        <td>
-          <div class="btn-group" role="group">
-             <button class="btn btn-outline-secondary btn-sm" onclick="triggerUpload('${i.fileId}')" title="Upload Result"><i class="bi bi-upload"></i></button>
-             ${i.studentFile ? `<a href="${i.studentFile}" target="_blank" class="btn btn-outline-primary btn-sm" title="View User File"><i class="bi bi-eye"></i></a>` : ''}
-          </div>
-        </td>
-      </tr>`;
-    }).join('');
-    updateSortIcons();
+  const sheet = ss.getSheetByName('Logs');
+  const data = sheet.getDataRange().getValues();
+  const rowIndex = data.findIndex(r => r[5] === fileId && (r[1] === username || isAdmin));
+  if(rowIndex > 0) { 
+      try { DriveApp.getFileById(fileId).setTrashed(true);
+      } catch(e){}
+      sheet.deleteRow(rowIndex + 1); 
+      return { status: 'success', message: 'ลบเรียบร้อย' };
   }
   
-  function updateBadgeColor(select) {
-      let val = select.value;
-      let cls = 'form-select form-select-sm border-0 badge ';
-      if(val === 'รอ') cls += 'bg-warning text-dark';
-      else if(val === 'รอเจ้าหน้าที่ตรวจสอบ') cls += 'bg-warning text-dark border border-danger';
-      else if(val === 'รับเรื่องแล้ว') cls += 'bg-info text-white';
-      else if(val === 'แก้ไข') cls += 'bg-danger text-white';
-      else if(val === 'เสร็จสิ้น') cls += 'bg-success text-white';
-      select.className = cls;
+  return { status: 'error', message: 'เกิดข้อผิดพลาด: คุณไม่มีสิทธิ์ลบไฟล์นี้ หรือไม่พบไฟล์' };
+}
+
+function renameHistory(fileId, newName, username) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Logs');
+  const data = sheet.getDataRange().getValues();
+  const rowIndex = data.findIndex(r => r[5] === fileId && r[1] === username);
+  if(rowIndex > 0) {
+      try { DriveApp.getFileById(fileId).setName(newName);
+      } catch(e){}
+      sheet.getRange(rowIndex + 1, 3).setValue(newName);
+      return { status: 'success', message: 'แก้ไขเรียบร้อย' };
+  }
+  return { status: 'error', message: 'Error' };
+}
+
+function truncate(text, limit) {
+  if (!text) return "";
+  text = String(text);
+  const getVisualLen = (t) => t.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '').length;
+  let current = "";
+  for (let char of text) {
+    if (getVisualLen(current + char) > limit) break;
+    current += char;
+  }
+  return current;
+}
+
+function replaceTextWithImage(slide, searchText, base64Data) {
+  if (!base64Data) return;
+  const encodedImage = base64Data.split(',')[1];
+  const blob = Utilities.newBlob(Utilities.base64Decode(encodedImage), 'image/png', 'signature.png');
+  const shapes = slide.getShapes();
+  for (let i = 0; i < shapes.length; i++) {
+    const shape = shapes[i];
+    if (shape.getText().asString().includes(searchText)) {
+      slide.insertImage(blob, shape.getLeft(), shape.getTop(), shape.getWidth(), shape.getHeight());
+      shape.remove();
+      break;
+    }
+  }
+}
+
+function getTemplateData() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let configSheet = ss.getSheetByName('Config');
+  if (!configSheet) { configSheet = ss.insertSheet('Config');
+  configSheet.appendRow(['Major', 'Advisor']); }
+
+  let majors = [], teachers = [];
+  if (configSheet.getLastRow() > 1) {
+    const d = configSheet.getRange(2, 1, configSheet.getLastRow() - 1, 2).getValues();
+    majors = d.map(r => r[0]).filter(String);
+    teachers = d.map(r => r[1]).filter(String);
   }
 
-  function sortAdminTable(col) {
-    if (currentSort.col === col) { currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc'; } 
-    else { currentSort.col = col; currentSort.order = 'asc'; }
-    const sortedList = [...adminDataList].sort((a, b) => {
-        let valA, valB;
-        if (col === 'timestamp') { valA = parseCustomDate(a.timestamp); valB = parseCustomDate(b.timestamp); } 
-        else if (col === 'topic') { valA = TOPIC_MAP[a.type] || a.type || ''; valB = TOPIC_MAP[b.type] || b.type || ''; } 
-        else { valA = String(a[col] || '').toLowerCase(); valB = String(b[col] || '').toLowerCase(); }
-        if (valA < valB) return currentSort.order === 'asc' ? -1 : 1;
-        if (valA > valB) return currentSort.order === 'asc' ? 1 : -1;
-        return 0;
+  let tempSheet = ss.getSheetByName('Templates');
+  if (!tempSheet) { tempSheet = ss.insertSheet('Templates'); tempSheet.appendRow(['Name', 'Topic', 'Data', 'Reason']); }
+  
+  let templates = [];
+  if (tempSheet.getLastRow() > 1) {
+    const d = tempSheet.getRange(2, 1, tempSheet.getLastRow() - 1, 4).getValues();
+    templates = d.map(r => ({
+      name: r[0], topic: r[1], data: r[2], reason: r[3]
+    })).filter(t => t.name);
+  }
+  return { majors, teachers, templates };
+}
+
+function sendLinePushMessage(message) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet();
+    var configSheet = sheet.getSheetByName("Config_Line"); 
+
+    if (!configSheet) {
+      console.log("❌ ไม่พบ Sheet 'Config_Line'");
+      return;
+    }
+
+    var accessToken = configSheet.getRange("B1").getValue();
+    var targetId = configSheet.getRange("B2").getValue();
+    if (!accessToken || !targetId) {
+      console.log("❌ ข้อมูล Token (B1) หรือ ID (B2) ไม่ครบ");
+      return;
+    }
+
+    var url = "https://api.line.me/v2/bot/message/push";
+    var payload = JSON.stringify({
+      "to": targetId,
+      "messages": [{ "type": "text", "text": message }]
     });
-    filterAdminTable(sortedList);
-  }
-
-  function filterAdminTable(sourceList = null) {
-    let list = sourceList || adminDataList;
-    if (!sourceList && !adminDataList.length) return;
-    const term = document.getElementById('admin-search').value.toLowerCase().trim();
-    const filtered = list.filter(item => {
-        const topic = (TOPIC_MAP[item.type] || '').toLowerCase();
-        const user = (item.username || '').toLowerCase();
-        const name = (item.name || '').toLowerCase();
-        const std = (item.std_id || '').toLowerCase();
-        const status = (item.status || '').toLowerCase();
-        const date = (item.timestamp || '').toLowerCase();
-        return user.includes(term) || name.includes(term) || std.includes(term) || topic.includes(term) || status.includes(term) || date.includes(term);
+    UrlFetchApp.fetch(url, {
+      "method": "post",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + accessToken
+      },
+      "payload": payload
     });
-    renderAdminTable(filtered);
-  }
+    console.log("✅ ส่ง LINE สำเร็จ");
 
-  function parseCustomDate(dateStr) {
-    if(!dateStr || dateStr === '-') return 0;
-    const [dRange, tRange] = dateStr.split(' ');
-    if(!dRange) return 0;
-    const [d, m, y] = dRange.split('/');
-    const [hr, min] = tRange ? tRange.split(':') : [0,0];
-    return new Date(y, m-1, d, hr, min).getTime();
+  } catch (e) {
+    console.log("❌ Error sendLine: " + e.toString());
   }
+}
 
-  function updateSortIcons() {
-    document.querySelectorAll('.sort-icon').forEach(el => el.parentElement.className = 'sortable');
-    const activeHeader = document.querySelector(`th[onclick="sortAdminTable('${currentSort.col}')"]`);
-    if(activeHeader) { activeHeader.className = `sortable sort-${currentSort.order}`; }
-  }
+function doPost(e) {
+  try {
+    var json = JSON.parse(e.postData.contents);
+    if (json.events.length === 0) return;
+    var event = json.events[0];
+    var msg = event.message.text || "";
+    var type = event.source.type;
+    var id = "";
+    if (type === "group") {
+      id = event.source.groupId;
+    } else {
+      id = event.source.userId;
+    }
 
-  function triggerUpload(fileId) {
-    currentUploadFileId = fileId;
-    document.getElementById('file-input').click();
+    if (msg.toLowerCase().includes("check")) { 
+       MailApp.sendEmail({
+         to: "nitichan@tu.ac.th",
+         subject: "📌 ได้ Group ID แล้วครับ!",
+         htmlBody: "<h3>ข้อมูลจาก LINE (" + type + ")</h3>" +
+                   "<p><b>Group ID / User ID คือ:</b></p>" +
+                   "<h2>" 
+                   + id + "</h2>" +
+                   "<hr>" +
+                   "<p>ก๊อปปี้รหัสนี้ไปใส่ในตัวแปร <b>ADMIN_USER_ID</b> ในไฟล์ Code.gs ได้เลยครับ</p>"
+       });
+    }
+
+  } catch (error) {
+    MailApp.sendEmail({
+       to: "nitichan@tu.ac.th",
+       subject: "❌ ระบบ Error",
+       body: "Error: " + error.toString()
+    });
   }
-  document.getElementById('file-input').addEventListener('change', function() {
-    if (this.files.length === 0) return;
-    const file = this.files[0];
-    const reader = new FileReader();
-    toggleLoad(true);
-    reader.onload = function(e) {
-      google.script.run.withSuccessHandler(res => {
-        toggleLoad(false);
-        showAlert(res.message, res.status==='success'?'สำเร็จ':'ข้อผิดพลาด');
-        loadRequests(); 
-      }).uploadFile(e.target.result, file.type, currentUploadFileId, currentUser.role, currentUser.username);
-    };
-    reader.readAsDataURL(file);
+}
+
+function replyLineMessage(replyToken, id, typeText, token) {
+  var url = "https://api.line.me/v2/bot/message/reply";
+  var payload = JSON.stringify({
+    "replyToken": replyToken,
+    "messages": [{
+      "type": "text",
+      "text": typeText + " ของคุณคือ:\n" + id + "\n\n(นำรหัสนี้ไปใส่ในช่อง B2 ของ Sheet 'Config_Line')"
+    }]
   });
+  UrlFetchApp.fetch(url, {
+    "method": "post",
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    "payload": payload
+  });
+}
 
-  function changeStatus(fileId, newStatus) {
-    google.script.run.withSuccessHandler(msg => console.log(msg)).adminUpdateStatus(fileId, newStatus);
-  }
-  
-  function promptBanUser() {
-    showPrompt("กรอก Email ที่ต้องการระงับการใช้งาน:", "example@tu.ac.th", (email) => {
-        toggleLoad(true);
-        google.script.run.withSuccessHandler(res => { toggleLoad(false); showAlert(res); }).adminBanUser(email);
-    });
-  }
-  
-  function renameItem(fileId) {
-     showPrompt("กรุณาใส่ชื่อไฟล์ใหม่:", "", (newName) => {
-       toggleLoad(true);
-       google.script.run.withSuccessHandler(res => {
-         toggleLoad(false);
-         showAlert(res.message);
-         if(res.status==='success') loadRequests();
-       }).renameHistory(fileId, newName, currentUser.username);
-     });
-  }
-  
-  function deleteItem(fileId) {
-     showConfirm("คุณต้องการลบรายการนี้ใช่หรือไม่?", () => {
-       toggleLoad(true);
-       google.script.run.withSuccessHandler(res => {
-         toggleLoad(false);
-         showAlert(res.message);
-         if(res.status==='success') loadRequests();
-       }).deleteHistory(fileId, currentUser.username);
-     });
-  }
-
-  function toggleFields(topic) {
-    if (!topic) return;
-    document.getElementById('empty-msg').classList.add('hidden');
-    document.querySelectorAll('.d-field').forEach(div => {
-       const topics = div.getAttribute('data-topic').split(' ');
-       if (topics.includes(topic)) div.classList.remove('hidden');
-       else div.classList.add('hidden');
-    });
-  }
-
-  function applyTemplate() {
-    const idx = document.getElementById('template_select').value;
-    if (idx === "") {
-       document.querySelector('select[name="request_type"]').value = "";
-       document.getElementById('empty-msg').classList.remove('hidden');
-       document.querySelectorAll('.d-field').forEach(d => d.classList.add('hidden'));
-       document.querySelector('textarea[name="reason_full"]').value = "";
-       document.querySelector('input[name="custom_filename"]').value = "";
-       return;
-    }
-    const t = globalTemplates[idx];
-    if (!t) return;
-    const reqSelect = document.querySelector('select[name="request_type"]');
-    reqSelect.value = t.topic; 
-    toggleFields(t.topic);
-    document.querySelector('textarea[name="reason_full"]').value = t.reason;
-    document.querySelector('input[name="custom_filename"]').value = t.name + "_" + currentUser.name;
-    let targetInputName = "";
-    switch (t.topic) {
-      case 't1': targetInputName = "major_sel"; break;     
-      case 't2': targetInputName = "major_to"; break;      
-      case 't3': targetInputName = "r_no"; break;          
-      case 't5': targetInputName = "reg_reasson"; break;   
-      case 't6': targetInputName = "re_ad"; break;         
-      case 't7': case 't8': targetInputName = "location"; break;      
-      case 't9': targetInputName = "items"; break;         
-      case 't10': targetInputName = "other"; break;        
-    }
-    if (targetInputName) {
-      const input = document.querySelector(`[name="${targetInputName}"]`);
-      if (input) { input.value = t.data; input.dispatchEvent(new Event('input')); }
-    }
-    document.querySelectorAll('[data-limit]').forEach(el => el.dispatchEvent(new Event('input')));
-  }
-
-  function initData() {
-    google.script.run.withSuccessHandler(d => {
-      const tOpts = '<option value="">-- เลือกอาจารย์ --</option>' + d.teachers.map(t=>`<option value="${t}">${t}</option>`).join('');
-      document.querySelectorAll('#advisor_dropdown, .teacher-list').forEach(el => el.innerHTML = tOpts);
-      const mOpts = '<option value="">-- เลือกสาขา --</option>' + d.majors.map(m=>`<option value="${m}">${m}</option>`).join('');
-      document.getElementById('major_main_dropdown').innerHTML = mOpts;
-      document.querySelectorAll('.major-list').forEach(el => el.innerHTML = mOpts);
-      globalTemplates = d.templates || [];
-      const tempOpts = '<option value="">-- ไม่ใช้ Template (กรอกเอง) --</option>' + 
-                       globalTemplates.map((t, index) => `<option value="${index}">${t.name}</option>`).join('');
-      document.getElementById('template_select').innerHTML = tempOpts;
-    }).getTemplateData();
-  }
-
-  const canvas = document.getElementById('sig-canvas');
-  const ctx = canvas.getContext('2d');
-  let drawing = false;
-  function startDraw(e) { drawing = true; ctx.beginPath(); draw(e); }
-  function endDraw() { drawing = false; ctx.beginPath(); saveSig(); }
-  function draw(e) {
-    if (!drawing) return; e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches[0].clientY) - rect.top;
-    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
-    ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
-  }
-  canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mouseup', endDraw); canvas.addEventListener('mousemove', draw);
-  canvas.addEventListener('touchstart', startDraw); canvas.addEventListener('touchend', endDraw); canvas.addEventListener('touchmove', draw);
-  function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); document.getElementById('signature_data').value = ""; }
-  function saveSig() { document.getElementById('signature_data').value = canvas.toDataURL('image/png'); }
-
-  function getVisualLen(t) { return t.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '').length; }
-  
-  function initInputConstraints() {
-    document.querySelectorAll('[data-limit]').forEach(input => {
-      const parent = input.parentNode;
-      const existing = parent.querySelector('.char-count');
-      if(existing) existing.remove();
-      const limit = parseInt(input.getAttribute('data-limit'));
-      const counterEl = document.createElement('div');
-      counterEl.className = 'char-count';
-      counterEl.innerText = `0 / ${limit}`;
-      input.insertAdjacentElement('afterend', counterEl);
-      const update = () => {
-         let val = input.value;
-         if (input.getAttribute('data-type') === 'number') val = val.replace(/\D/g, '');
-         while (getVisualLen(val) > limit) val = val.slice(0, -1);
-         input.value = val;
-         const len = getVisualLen(val);
-         counterEl.innerText = `${len} / ${limit}`;
-         counterEl.classList.toggle('limit-reached', len >= limit);
-      };
-      input.addEventListener('input', update);
-      if(input.value) update();
-    });
-    const ys = document.querySelectorAll('.year-list');
-    let opts = '<option value="">-- เลือกปี --</option>';
-    for(let y=2560; y<=2570; y++) opts += `<option value="${y}">${y}</option>`;
-    ys.forEach(s => s.innerHTML = opts);
-  }
-</script>
-</body>
-</html>
+function testPushSystem() {
+  console.log("🚀 กำลังทดสอบส่งข้อความ...");
+  sendLinePushMessage("🟢 ทดสอบระบบ: การเชื่อมต่อสำเร็จ! (จาก Admin)");
+}
