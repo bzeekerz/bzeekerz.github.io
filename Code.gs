@@ -25,8 +25,13 @@ function doGet(e) {
 function getScriptUrl() { return ScriptApp.getService().getUrl(); }
 function generateToken() { return Utilities.getUuid(); }
 
-function hashPassword(password) {
-  const rawBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password);
+function hashPassword(password, salt) {
+  // กรณีไม่มี salt (เผื่อข้อมูลเก่า) ให้เป็นค่าว่าง
+  if (salt == null) salt = ""; 
+  
+  // ผสม password กับ salt ก่อนเข้า SHA-256
+  const rawBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password + salt);
+  
   let txtHash = '';
   for (let i = 0; i < rawBytes.length; i++) {
     let hashVal = rawBytes[i];
@@ -35,6 +40,11 @@ function hashPassword(password) {
     txtHash += hashVal.toString(16);
   }
   return txtHash;
+}
+
+// เพิ่มฟังก์ชันสร้าง Salt (ใช้ UUID เพราะไม่ซ้ำแน่นอน)
+function generateSalt() {
+  return Utilities.getUuid();
 }
 
 function sendEmail(to, subject, body) {
@@ -58,65 +68,96 @@ function getMOTD() {
 function loginUser(username, password) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let userSheet = ss.getSheetByName('Users');
+  
+  // ถ้ายังไม่มี Sheet ให้สร้างใหม่พร้อม Header ที่มี Salt
   if (!userSheet) {
     userSheet = ss.insertSheet('Users');
-    userSheet.appendRow(['Username', 'Password', 'Name', 'Std_ID', 'Email', 'Tel', 'Year', 'Gender', 'Token', 'Verified', 'Reset_Token', 'Reset_Exp', 'Role', 'Status']);
+    userSheet.appendRow(['Username', 'Password', 'Name', 'Std_ID', 'Email', 'Tel', 'Year', 'Gender', 'Token', 'Verified', 'Reset_Token', 'Reset_Exp', 'Role', 'Status', 'Salt']);
     return { status: 'error', message: 'ระบบเพิ่งเริ่มต้น กรุณาสมัครสมาชิกใหม่' };
   }
 
   const data = userSheet.getDataRange().getValues();
-  const inputHash = hashPassword(password);
-  const user = data.find(row => row[0] == username && row[1] == inputHash);
-  if (user) {
-    if (String(user[9]).toUpperCase() !== 'TRUE') {
+  
+  // 1. ค้นหาเฉพาะ Username ก่อน (ยังไม่เช็ค Password ตรงนี้)
+  const userRow = data.find(row => row[0] == username);
+  
+  if (userRow) {
+    // ตรวจสอบสถานะการยืนยันตัวตนและ Ban
+    if (String(userRow[9]).toUpperCase() !== 'TRUE') {
       return { status: 'error', message: 'กรุณายืนยันตัวตนทาง Email ก่อน' };
     }
     
-    let role = 'user';
-    let status = 'active';
-    if (user.length > 12) role = user[12] || 'user';
-    if (user.length > 13) status = user[13] || 'active';
+    let role = (userRow.length > 12 && userRow[12]) ? userRow[12] : 'user';
+    let status = (userRow.length > 13 && userRow[13]) ? userRow[13] : 'active';
+    
     if (String(status).toLowerCase() === 'banned') {
       return { status: 'error', message: 'บัญชีของคุณถูกระงับการใช้งาน' };
     }
 
-    return { 
-      status: 'success', 
-      username: user[0], 
-      name: user[2], 
-      std_id: user[3],
-      email: user[4], 
-      tel: user[5],
-      year: user[6],
-      gender: user[7],
-      role: role
-    };
-  } else {
-    return { status: 'error', message: 'Username หรือ Password ไม่ถูกต้อง' };
-  }
+    // --- ส่วนตรวจสอบรหัสผ่านแบบ Salted ---
+    const storedHash = userRow[1];      // รหัสผ่านที่ถูกแฮชใน DB
+    const storedSalt = userRow[14] || ""; // ดึง Salt จากคอลัมน์ที่ 15 (Index 14)
+    
+    // เอาพาสที่กรอก + Salt ใน DB มาแฮชใหม่ แล้วเทียบกัน
+    if (hashPassword(password, storedSalt) === storedHash) {
+        return { 
+          status: 'success', 
+          username: userRow[0], 
+          name: userRow[2], 
+          std_id: userRow[3],
+          email: userRow[4], 
+          tel: userRow[5],
+          year: userRow[6],
+          gender: userRow[7],
+          role: role
+        };
+    }
+  } 
+  
+  // ถ้าหา User ไม่เจอ หรือ Password ผิด
+  return { status: 'error', message: 'Username หรือ Password ไม่ถูกต้อง' };
 }
 
 function registerUser(formObject) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let userSheet = ss.getSheetByName('Users');
+  
+  // อัปเดต Header ให้มี Salt หากสร้าง Sheet ใหม่
   if (!userSheet) {
     userSheet = ss.insertSheet('Users');
-    userSheet.appendRow(['Username', 'Password', 'Name', 'Std_ID', 'Email', 'Tel', 'Year', 'Gender', 'Token', 'Verified', 'Reset_Token', 'Reset_Exp', 'Role', 'Status']);
+    userSheet.appendRow(['Username', 'Password', 'Name', 'Std_ID', 'Email', 'Tel', 'Year', 'Gender', 'Token', 'Verified', 'Reset_Token', 'Reset_Exp', 'Role', 'Status', 'Salt']);
   }
   
   const data = userSheet.getDataRange().getValues();
   if (data.some(row => row[0] === formObject.reg_username)) return { status: 'error', message: 'Username นี้ถูกใช้ไปแล้ว' };
   if (data.some(row => row[4] === formObject.reg_email)) return { status: 'error', message: 'Email นี้ถูกใช้ไปแล้ว' };
 
-  const hashedPassword = hashPassword(formObject.reg_password);
+  // --- สร้าง Salt และ Hash ---
+  const salt = generateSalt(); 
+  const hashedPassword = hashPassword(formObject.reg_password, salt);
+  
   const verifyToken = generateToken();
   const verifyLink = `${getScriptUrl()}?page=verify&token=${verifyToken}`;
 
+  // บันทึกข้อมูล โดยเพิ่ม salt ต่อท้ายสุด (คอลัมน์ที่ 15)
   userSheet.appendRow([
-    formObject.reg_username, hashedPassword, formObject.reg_name, formObject.reg_std_id,
-    formObject.reg_email, "'" + formObject.reg_tel, formObject.reg_year, formObject.reg_gender,
-    verifyToken, 'FALSE', '', '', 'user', 'active'
+    formObject.reg_username, 
+    hashedPassword, 
+    formObject.reg_name, 
+    formObject.reg_std_id,
+    formObject.reg_email, 
+    "'" + formObject.reg_tel, 
+    formObject.reg_year, 
+    formObject.reg_gender,
+    verifyToken, 
+    'FALSE', 
+    '', 
+    '', 
+    'user', 
+    'active',
+    salt // <--- เพิ่ม Salt ตรงนี้
   ]);
+  
   sendEmail(formObject.reg_email, 'ยืนยันการสมัคร', `<p><a href="${verifyLink}">คลิกยืนยันตัวตน</a></p>`);
   return { status: 'success', message: 'สมัครสำเร็จ! กรุณาตรวจสอบ Email' };
 }
@@ -153,11 +194,24 @@ function submitResetPassword(token, newPass) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const userSheet = ss.getSheetByName('Users');
   const data = userSheet.getDataRange().getValues();
-  const rowIndex = data.findIndex(row => row[10] === token);
+  
+  // ค้นหาจาก Token
+  const rowIndex = data.findIndex(row => row[10] === token); // Index 10 = Reset_Token
+  
   if (rowIndex > 0) {
     if (new Date().getTime() > data[rowIndex][11]) return { status: 'error', message: 'ลิงก์หมดอายุ' };
-    userSheet.getRange(rowIndex + 1, 2).setValue(hashPassword(newPass));
+    
+    // --- สร้าง Salt ใหม่ ---
+    const newSalt = generateSalt();
+    const newHash = hashPassword(newPass, newSalt);
+
+    // อัปเดต Password (คอลัมน์ 2)
+    userSheet.getRange(rowIndex + 1, 2).setValue(newHash);
+    // ล้าง Token
     userSheet.getRange(rowIndex + 1, 11).setValue('');
+    // อัปเดต Salt ใหม่ (คอลัมน์ 15)
+    userSheet.getRange(rowIndex + 1, 15).setValue(newSalt);
+    
     return { status: 'success', message: 'เปลี่ยนรหัสสำเร็จ' };
   }
   return { status: 'error', message: 'Token ผิด' };
@@ -167,11 +221,28 @@ function changePassword(user, oldPass, newPass) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const userSheet = ss.getSheetByName('Users');
   const data = userSheet.getDataRange().getValues();
-  const hash = hashPassword(oldPass);
-  const rowIndex = data.findIndex(row => row[0] == user && row[1] == hash);
+  
+  // ค้นหา User (Row Index) จาก Username
+  const rowIndex = data.findIndex(row => row[0] == user);
+  
   if(rowIndex > 0) {
-    userSheet.getRange(rowIndex + 1, 2).setValue(hashPassword(newPass));
-    return { status: 'success', message: 'เปลี่ยนรหัสเรียบร้อย' };
+    const userData = data[rowIndex];
+    const storedHash = userData[1];
+    const storedSalt = userData[14] || ""; // ดึง Salt เดิม
+    
+    // ตรวจสอบรหัสเก่า
+    if (hashPassword(oldPass, storedSalt) === storedHash) {
+        // --- ถ้ารหัสเก่าถูก ให้สร้าง Salt ใหม่สำหรับรหัสใหม่ ---
+        const newSalt = generateSalt();
+        const newHash = hashPassword(newPass, newSalt);
+        
+        // อัปเดต Password
+        userSheet.getRange(rowIndex + 1, 2).setValue(newHash);
+        // อัปเดต Salt
+        userSheet.getRange(rowIndex + 1, 15).setValue(newSalt);
+        
+        return { status: 'success', message: 'เปลี่ยนรหัสเรียบร้อย' };
+    }
   }
   return { status: 'error', message: 'รหัสเดิมผิด' };
 }
