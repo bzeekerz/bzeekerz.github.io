@@ -141,6 +141,24 @@
     }
     .modal-header { border-bottom: 1px solid rgba(0,0,0,0.05); }
     .modal-footer { border-top: none; padding-top: 0; padding-bottom: 1.5rem; }
+    
+    /* Admin View Mode Highlight */
+    .view-mode-active {
+        border: 2px solid #ffc107;
+        position: relative;
+    }
+    .view-mode-active::after {
+        content: 'View Mode';
+        position: absolute;
+        top: -10px;
+        right: 20px;
+        background: #ffc107;
+        color: #000;
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -390,8 +408,8 @@
           </select>
         </div>
 
-        <div class="card p-4">
-          <div class="d-flex align-items-center mb-3 border-bottom pb-2">
+        <div class="card p-4" id="mainFormContainer">
+          <div class="d-flex align-items-center mb-3 border-bottom pb-2" id="mainFormHeader">
              <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">1</div>
              <h5 class="m-0 text-primary fw-bold">ข้อมูลพื้นฐาน</h5>
           </div>
@@ -848,6 +866,7 @@
     }).join('');
   }
 
+  // --- 🔥 Modified renderAdminTable for View Mode 🔥 ---
   function renderAdminTable(list) {
     const tbody = document.getElementById('admin-table-body');
     document.getElementById('admin-count').innerText = `${list.length} รายการ`;
@@ -858,20 +877,22 @@
         
         let statusBadgeClass = '';
         if(i.status === 'รอ') statusBadgeClass = 'bg-warning text-dark';
-        else if(i.status === 'รอเจ้าหน้าที่ตรวจสอบ') statusBadgeClass = 'bg-warning text-dark border border-danger'; // เน้นหน่อย
+        else if(i.status === 'รอเจ้าหน้าที่ตรวจสอบ') statusBadgeClass = 'bg-warning text-dark border border-danger'; 
         else if(i.status === 'รับเรื่องแล้ว') statusBadgeClass = 'bg-info text-white';
         else if(i.status === 'แก้ไข') statusBadgeClass = 'bg-danger text-white';
         else if(i.status === 'เสร็จสิ้น') statusBadgeClass = 'bg-success text-white';
         else statusBadgeClass = 'bg-secondary text-white';
 
         return `
-      <tr class="align-middle">
+      <tr class="align-middle" onclick="viewRequest('${i.fileId}')" style="cursor: pointer;" title="คลิกเพื่อดูรายละเอียด">
         <td class="text-nowrap text-muted small">${i.timestamp}</td>
         <td class="text-primary fw-bold">${i.std_id}</td>
         <td>${i.name}</td>
         <td><span class="badge bg-light text-dark border fw-normal">${topicName}</span></td>
-        <td><a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-light border"><i class="bi bi-file-pdf text-danger"></i> PDF</a></td>
-        <td>
+        <td onclick="event.stopPropagation()">
+            <a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-light border"><i class="bi bi-file-pdf text-danger"></i> PDF</a>
+        </td>
+        <td onclick="event.stopPropagation()">
           <select class="form-select form-select-sm badge ${statusBadgeClass} border-0" 
                   style="width:auto; cursor:pointer; padding-right: 2rem;" 
                   onchange="changeStatus('${i.fileId}', this.value); updateBadgeColor(this)">
@@ -882,7 +903,7 @@
             <option value="เสร็จสิ้น" class="bg-white text-dark" ${i.status==='เสร็จสิ้น'?'selected':''}>เสร็จสิ้น</option>
           </select>
         </td>
-        <td>
+        <td onclick="event.stopPropagation()">
           <div class="btn-group" role="group">
              <button class="btn btn-outline-secondary btn-sm" onclick="triggerUpload('${i.fileId}')" title="Upload Result"><i class="bi bi-upload"></i></button>
              ${i.studentFile ? `<a href="${i.studentFile}" target="_blank" class="btn btn-outline-primary btn-sm" title="View User File"><i class="bi bi-eye"></i></a>` : ''}
@@ -1003,7 +1024,10 @@
   }
 
   function toggleFields(topic) {
-    if (!topic) return;
+    if (!topic) {
+       document.querySelectorAll('.d-field').forEach(div => div.classList.add('hidden'));
+       return; 
+    }
     document.getElementById('empty-msg').classList.add('hidden');
     document.querySelectorAll('.d-field').forEach(div => {
        const topics = div.getAttribute('data-topic').split(' ');
@@ -1107,6 +1131,115 @@
     let opts = '<option value="">-- เลือกปี --</option>';
     for(let y=2560; y<=2570; y++) opts += `<option value="${y}">${y}</option>`;
     ys.forEach(s => s.innerHTML = opts);
+  }
+
+  // --- 🔥 NEW FUNCTIONS FOR ADMIN VIEW MODE 🔥 ---
+  function viewRequest(fileId) {
+    const data = adminDataList.find(item => item.fileId === fileId);
+    if (!data) return;
+
+    // Scroll to form
+    const formContainer = document.getElementById('mainFormContainer');
+    formContainer.scrollIntoView({ behavior: 'smooth' });
+    
+    // Add Alert Box & Highlight
+    formContainer.classList.add('view-mode-active');
+    
+    let exitContainer = document.getElementById('exit-view-container');
+    if (!exitContainer) {
+        exitContainer = document.createElement('div');
+        exitContainer.id = 'exit-view-container';
+        exitContainer.className = 'alert alert-warning shadow-sm mb-3 d-flex justify-content-between align-items-center';
+        // Insert before mainForm
+        document.getElementById('mainForm').before(exitContainer);
+    }
+    
+    exitContainer.innerHTML = `
+        <div>
+            <i class="bi bi-eye-fill fs-5 me-2"></i> 
+            กำลังดูข้อมูล: <strong>${data.name}</strong> (${TOPIC_MAP[data.type] || data.type})
+        </div>
+        <button class="btn btn-sm btn-dark px-3" onclick="exitViewMode()">ปิดโหมดดูข้อมูล</button>
+    `;
+
+    // Fill Data
+    setVal('custom_filename', data.custom_filename || '');
+    setVal('program', data.program);
+    setVal('year', data.year);
+    setVal('tel', data.tel);
+    setVal('major', data.major);
+    setVal('advisor', data.advisor);
+    setVal('email', data.email);
+    setVal('address', data.address);
+    setVal('request_type', data.type); 
+    
+    // Trigger topic change logic
+    toggleFields(data.type);
+
+    // Dynamic Fields (Now populated by ...rawData from server!)
+    setVal('major_sel', data.major_sel);
+    setVal('major_from', data.major_from);
+    setVal('major_to', data.major_to);
+    setVal('prof_rec', data.prof_rec);
+    setVal('r_no', data.r_no);
+    setVal('reg_sem', data.reg_sem);
+    setVal('reg_year', data.reg_year);
+    setVal('reg_reasson', data.reg_reasson);
+    setVal('re_ad', data.re_ad);
+    setVal('re_ad_year', data.re_ad_year);
+    setVal('location', data.location);
+    setVal('items', data.items);
+    setVal('other', data.other);
+    setVal('reason_full', data.reason_full || data.reason);
+
+    // Disable All Inputs
+    const form = document.getElementById('mainForm');
+    form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => {
+        el.disabled = true;
+        if(el.type === 'submit') el.classList.add('hidden');
+    });
+
+    // Disable Canvas
+    const canvas = document.getElementById('sig-canvas');
+    canvas.style.pointerEvents = 'none';
+    canvas.style.opacity = '0.5';
+  }
+
+  function setVal(name, val) {
+     const el = document.querySelector(`[name="${name}"]`);
+     if(el && val !== undefined && val !== null) {
+        el.value = val;
+        el.dispatchEvent(new Event('input'));
+     }
+  }
+
+  function exitViewMode() {
+      // Remove Highlight & Alert
+      document.getElementById('mainFormContainer').classList.remove('view-mode-active');
+      const exitContainer = document.getElementById('exit-view-container');
+      if(exitContainer) exitContainer.remove();
+
+      // Reset Form & Enable Inputs
+      const form = document.getElementById('mainForm');
+      form.reset();
+      form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => {
+          el.disabled = false;
+          if(el.type === 'submit') el.classList.remove('hidden');
+      });
+
+      // Reset Canvas
+      const canvas = document.getElementById('sig-canvas');
+      canvas.style.pointerEvents = 'auto';
+      canvas.style.opacity = '1';
+      clearSig();
+      toggleFields('');
+
+      // Restore Current User Data (if login)
+      if(currentUser) {
+        document.getElementById('main_year').value = currentUser.year || '';
+        document.getElementById('main_tel').value = currentUser.tel || '';
+        document.getElementById('main_email').value = currentUser.email || '';
+      }
   }
 </script>
 </body>
