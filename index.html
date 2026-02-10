@@ -866,7 +866,7 @@
     }).join('');
   }
 
-  // --- 🔥 Modified renderAdminTable for View Mode 🔥 ---
+  // --- 🔥 Modified renderAdminTable for View Mode & Quick Actions 🔥 ---
   function renderAdminTable(list) {
     const tbody = document.getElementById('admin-table-body');
     document.getElementById('admin-count').innerText = `${list.length} รายการ`;
@@ -906,6 +906,8 @@
         <td onclick="event.stopPropagation()">
           <div class="btn-group" role="group">
              <button class="btn btn-outline-secondary btn-sm" onclick="triggerUpload('${i.fileId}')" title="Upload Result"><i class="bi bi-upload"></i></button>
+             <button class="btn btn-outline-warning btn-sm" onclick="renameItem('${i.fileId}')" title="Edit Name"><i class="bi bi-pencil"></i></button>
+             <button class="btn btn-outline-danger btn-sm" onclick="deleteItem('${i.fileId}')" title="Delete"><i class="bi bi-trash"></i></button>
              ${i.studentFile ? `<a href="${i.studentFile}" target="_blank" class="btn btn-outline-primary btn-sm" title="View User File"><i class="bi bi-eye"></i></a>` : ''}
           </div>
         </td>
