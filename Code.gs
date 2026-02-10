@@ -68,7 +68,9 @@ function loginUser(username, password) {
   }
 
   const data = userSheet.getDataRange().getValues();
+  // ใช้ == เพื่อเปรียบเทียบแบบผ่อนปรน (String vs Number)
   const userRow = data.find(row => row[0] == username);
+  
   if (userRow) {
     if (String(userRow[9]).toUpperCase() !== 'TRUE') {
       return { status: 'error', message: 'กรุณายืนยันตัวตนทาง Email ก่อน' };
@@ -86,7 +88,7 @@ function loginUser(username, password) {
     if (hashPassword(password, storedSalt) === storedHash) {
         return { 
           status: 'success', 
-          username: userRow[0], 
+          username: String(userRow[0]), // 🔥 บังคับเป็น String เพื่อแก้ปัญหา Username ตัวเลข
           name: userRow[2], 
           std_id: userRow[3],
           email: userRow[4], 
@@ -110,14 +112,16 @@ function registerUser(formObject) {
   }
   
   const data = userSheet.getDataRange().getValues();
-  if (data.some(row => row[0] === formObject.reg_username)) return { status: 'error', message: 'Username นี้ถูกใช้ไปแล้ว' };
+  // แปลงเป็น String ก่อนเปรียบเทียบ
+  if (data.some(row => String(row[0]) === String(formObject.reg_username))) return { status: 'error', message: 'Username นี้ถูกใช้ไปแล้ว' };
   if (data.some(row => row[4] === formObject.reg_email)) return { status: 'error', message: 'Email นี้ถูกใช้ไปแล้ว' };
 
-  const salt = generateSalt(); 
+  const salt = generateSalt();
   const hashedPassword = hashPassword(formObject.reg_password, salt);
   const verifyToken = generateToken();
   const verifyLink = `${getScriptUrl()}?page=verify&token=${verifyToken}`;
-
+  
+  // บังคับ username เป็น String ตอนบันทึก (ใส่ ' นำหน้าถ้าจำเป็น แต่นี่เราเก็บปกติแล้วไปแปลงตอนอ่านเอาก็ได้)
   userSheet.appendRow([
     formObject.reg_username, 
     hashedPassword, 
@@ -191,6 +195,7 @@ function changePassword(user, oldPass, newPass) {
   const userSheet = ss.getSheetByName('Users');
   const data = userSheet.getDataRange().getValues();
   
+  // ใช้ == เพื่อรองรับทั้งตัวเลขและสตริง
   const rowIndex = data.findIndex(row => row[0] == user);
   if(rowIndex > 0) {
     const userData = data[rowIndex];
@@ -216,6 +221,7 @@ function processForm(formData, userInfo) {
     const copyFile = templateFile.makeCopy(fileName, destFolder);
     const copyId = copyFile.getId();
     const slide = SlidesApp.openById(copyId);
+
     if (formData.signature_data) {
       const firstSlide = slide.getSlides()[0];
       replaceTextWithImage(firstSlide, '{{signature}}', formData.signature_data);
@@ -232,6 +238,7 @@ function processForm(formData, userInfo) {
     const val = (topic, value) => (reqType === topic || (Array.isArray(topic) && topic.includes(reqType))) ? value : "";
     const replace = (key, value) => slide.replaceAllText(`{{${key}}}`, value || " ");
     const tick = "✓";
+
     replace('male', userInfo.gender === 'male' ? tick : "");
     replace('female', userInfo.gender === 'female' ? tick : "");
     replace('BJM', formData.program === 'BJM' ? tick : "");
@@ -246,6 +253,7 @@ function processForm(formData, userInfo) {
     replace('address', truncate(formData.address, 95));
     replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 10));
     replace('email', truncate(formData.email, 60));
+
     let specificData = "";
     specificData += truncate(val('t1', formData.major_sel), 40);
     specificData += truncate(val('t2', formData.major_from), 40) + " " + truncate(val('t2', formData.major_to), 40);
@@ -295,9 +303,8 @@ function processForm(formData, userInfo) {
 
     // --- Save RAW JSON for Admin View Mode ---
     const rawDataJSON = JSON.stringify(formData);
-
     logSheet.appendRow([
-      new Date(), userInfo.username, fileName, reqType, pdfUrl, fileId, 
+      new Date(), String(userInfo.username), fileName, reqType, pdfUrl, fileId,  // 🔥 บังคับ Username เป็น String
       formData.program, userInfo.gender, formData.year, "'" + formData.tel, formData.major, 
       formData.advisor, formData.email, formData.address, specificData, formData.reason_full,
       'รอ', '', '', rawDataJSON // Col 20: Raw Data
@@ -323,8 +330,7 @@ function processForm(formData, userInfo) {
     }
 
     return { status: 'success', url: pdfUrl };
-  } catch (e) { return { status: 'error', message: 'Error: ' + e.toString() };
-  }
+  } catch (e) { return { status: 'error', message: 'Error: ' + e.toString() }; }
 }
 
 function getRequestsData(user) {
@@ -336,7 +342,8 @@ function getRequestsData(user) {
   if (userSheet) {
      const uData = userSheet.getDataRange().getValues();
      uData.forEach(r => {
-        if(r[0]) userMap[r[0]] = { name: r[2], std_id: r[3] };
+        // 🔥 แปลง Key (Username) เป็น String เสมอ
+        if(r[0]) userMap[String(r[0])] = { name: r[2], std_id: r[3] };
      });
   }
 
@@ -350,10 +357,9 @@ function getRequestsData(user) {
         let ts = r[0];
         let timeStr = (ts instanceof Date) ? Utilities.formatDate(ts, "GMT+7", "dd/MM/yyyy HH:mm") : String(ts || "-");
         
-        let username = String(r[1] || "");
+        let username = String(r[1] || ""); // 🔥 ดึงจาก Log บังคับเป็น String
         let userInfo = userMap[username] || { name: "-", std_id: "-" };
         
-        // --- Parse RAW Data for View Mode ---
         let rawData = {};
         try {
             if(r[19] && r[19] !== "") rawData = JSON.parse(r[19]);
@@ -379,17 +385,16 @@ function getRequestsData(user) {
             status: (r.length > 16) ? String(r[16] || "รอ") : "รอ",
             studentFile: (r.length > 17) ? String(r[17] || "") : "",
             adminFile: (r.length > 18) ? String(r[18] || "") : "",
-            
-            // Spread raw form data for view mode
             ...rawData
         };
     } catch (err) {
         return null;
     }
   }).filter(item => item !== null);
-  
+
   if (user.role !== 'admin') {
-    requests = requests.filter(r => r.username === user.username);
+    // 🔥 แก้บั๊กตรงนี้: เปรียบเทียบโดยแปลงเป็น String ทั้งคู่
+    requests = requests.filter(r => r.username === String(user.username));
   }
   
   return requests.reverse();
@@ -414,7 +419,9 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
       sheet.getRange(rowIndex + 1, 19).setValue(fileUrl);
       sheet.getRange(rowIndex + 1, 17).setValue('เสร็จสิ้น');
     } else {
-      if (data[rowIndex][1] !== username) return { status: 'error', message: 'ไม่มีสิทธิ์' };
+      // 🔥 แก้บั๊กตรวจสอบสิทธิ์: แปลงเป็น String ทั้งคู่
+      if (String(data[rowIndex][1]) !== String(username)) return { status: 'error', message: 'ไม่มีสิทธิ์' };
+      
       sheet.getRange(rowIndex + 1, 18).setValue(fileUrl);
       sheet.getRange(rowIndex + 1, 17).setValue('รอเจ้าหน้าที่ตรวจสอบ'); 
 
@@ -431,7 +438,7 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
         const topicName = topicMap[reqType] || reqType;
         const userSheet = ss.getSheetByName('Users');
         const userData = userSheet.getDataRange().getValues();
-        const userObj = userData.find(u => u[0] === username);
+        const userObj = userData.find(u => String(u[0]) === String(username));
         const nameShow = userObj ? `${userObj[2]} (${userObj[3]})` : username;
 
         const lineMsg = `🔄 Updated นักศึกษาส่งไฟล์ใหม่แล้ว!\n` +
@@ -479,12 +486,15 @@ function deleteHistory(fileId, username) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const userSheet = ss.getSheetByName('Users');
   const userRows = userSheet.getDataRange().getValues();
-  const currentUser = userRows.find(row => row[0] === username);
+  // 🔥 แก้ไข: แปลงเป็น String ก่อนค้นหา
+  const currentUser = userRows.find(row => String(row[0]) === String(username));
   const isAdmin = currentUser && currentUser[12] === 'admin'; 
 
   const sheet = ss.getSheetByName('Logs');
   const data = sheet.getDataRange().getValues();
-  const rowIndex = data.findIndex(r => r[5] === fileId && (r[1] === username || isAdmin));
+  // 🔥 แก้ไข: แปลงเป็น String ก่อนเปรียบเทียบสิทธิ์
+  const rowIndex = data.findIndex(r => r[5] === fileId && (String(r[1]) === String(username) || isAdmin));
+  
   if(rowIndex > 0) { 
       try { DriveApp.getFileById(fileId).setTrashed(true);
       } catch(e){}
@@ -499,7 +509,9 @@ function renameHistory(fileId, newName, username) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Logs');
   const data = sheet.getDataRange().getValues();
-  const rowIndex = data.findIndex(r => r[5] === fileId && r[1] === username);
+  // 🔥 แก้ไข: แปลงเป็น String ก่อนเปรียบเทียบสิทธิ์
+  const rowIndex = data.findIndex(r => r[5] === fileId && String(r[1]) === String(username));
+  
   if(rowIndex > 0) {
       try { DriveApp.getFileById(fileId).setName(newName);
       } catch(e){}
