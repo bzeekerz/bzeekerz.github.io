@@ -523,6 +523,15 @@
               <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="280" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
             </div>
 
+            <div class="mb-4">
+              <label class="fw-bold mb-2">เอกสารแนบ (PDF เท่านั้น) <span class="badge bg-warning text-dark">New!</span></label>
+              <div class="input-group">
+                <input type="file" id="attach_pdf" class="form-control" accept="application/pdf">
+                <span class="input-group-text text-muted small"><i class="bi bi-paperclip"></i> ต่อท้ายคำร้อง</span>
+              </div>
+              <div class="form-text">หากมีเอกสารเพิ่มเติม สามารถอัปโหลดเพื่อรวมเป็นไฟล์เดียวกันได้</div>
+            </div>
+
             <div class="mb-4 text-center p-3 border rounded bg-white">
               <label class="fw-bold mb-2 d-block">ลงชื่อนักศึกษา (เซ็นในกรอบ)</label>
               <canvas id="sig-canvas" width="300" height="120"></canvas>
@@ -560,7 +569,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-  // --- 🔥 Custom Modal Helper Functions 🔥 ---
   let myModalObj = null;
   document.addEventListener('DOMContentLoaded', () => {
       const myModalEl = document.getElementById('customModal');
@@ -624,8 +632,6 @@
           }
       };
   }
-
-  // --- End Custom Modal Helpers ---
 
   let currentUser = null;
   let globalTemplates = [];
@@ -731,7 +737,6 @@
       location.reload(); 
   }
 
-  // --- LOGIC ---
   document.getElementById('loginForm').addEventListener('submit', e => {
     e.preventDefault(); toggleLoad(true);
     google.script.run.withSuccessHandler(res => {
@@ -786,26 +791,77 @@
     }).changePassword(currentUser.username, data.get('old_pass'), data.get('new_pass'));
   });
 
-  document.getElementById('mainForm').addEventListener('submit', function(e) {
+  // --- 🔥 Modified Submit Handler for File Attachment 🔥 ---
+  document.getElementById('mainForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     if(!currentUser) return;
-    saveSig(); toggleLoad(true);
-    const data = {}; new FormData(this).forEach((v,k)=>data[k]=v);
+
+    // ตรวจสอบไฟล์แนบ
+    const attachInput = document.getElementById('attach_pdf');
+    if (attachInput.files.length > 0 && attachInput.files[0].type !== 'application/pdf') {
+        showAlert('กรุณาอัปโหลดไฟล์ PDF เท่านั้น', 'รูปแบบไฟล์ไม่ถูกต้อง');
+        return;
+    }
+
+    saveSig(); 
+    toggleLoad(true);
+    
+    // เตรียมข้อมูล Form Data
+    const data = {}; 
+    new FormData(this).forEach((v,k)=>data[k]=v);
+
+    // --- ส่วนที่เพิ่ม: อ่านไฟล์แนบเป็น Base64 (ถ้ามี) ---
+    if (attachInput.files.length > 0) {
+       try {
+         const fileData = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve({
+                name: attachInput.files[0].name,
+                mimeType: attachInput.files[0].type,
+                content: reader.result.split(',')[1] // เอาเฉพาะส่วน Base64
+            });
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(attachInput.files[0]);
+         });
+         data.fileAttachment = fileData; // แนบไปกับ object data
+       } catch (err) {
+         toggleLoad(false);
+         showAlert('เกิดข้อผิดพลาดในการอ่านไฟล์: ' + err.message);
+         return;
+       }
+    }
+    // ------------------------------------------------
+
+    // ส่งข้อมูลทั้งหมดไปที่ Server ทีเดียว
     google.script.run.withSuccessHandler(res => {
       toggleLoad(false);
       if(res.status === 'success') {
-        showConfirm('✅ สร้างคำร้องสำเร็จ! ต้องการเปิดดู PDF เลยหรือไม่?', () => {
-            window.open(res.url);
-        });
-        
-        loadRequests(); clearSig(); this.reset();
-        document.getElementById('main_year').value = currentUser.year || '';
-        document.getElementById('main_tel').value = currentUser.tel || '';
-        document.getElementById('main_email').value = currentUser.email || '';
-        document.querySelectorAll('.char-count').forEach(el => el.innerText = `0 / ${el.innerText.split(' / ')[1]}`);
-      } else showAlert(res.message, 'เกิดข้อผิดพลาด');
-    }).withFailureHandler(e => { toggleLoad(false); showAlert(e, 'Error'); }).processForm(data, currentUser);
+        finishProcess(res.url); // เรียกฟังก์ชันจบงาน
+      } else {
+        showAlert(res.message, 'เกิดข้อผิดพลาด');
+      }
+    }).withFailureHandler(e => { 
+        toggleLoad(false); 
+        showAlert(e.toString(), 'Error'); 
+    }).processForm(data, currentUser);
   });
+
+  function finishProcess(url) {
+        showConfirm('✅ สร้างคำร้อง(พร้อมแนบไฟล์)สำเร็จ! ต้องการเปิดดู PDF เลยหรือไม่?', () => {
+            window.open(url);
+        });
+        loadRequests(); 
+        clearSig(); 
+        document.getElementById('mainForm').reset();
+        document.getElementById('attach_pdf').value = ""; 
+        
+        if(currentUser) {
+            document.getElementById('main_year').value = currentUser.year || '';
+            document.getElementById('main_tel').value = currentUser.tel || '';
+            document.getElementById('main_email').value = currentUser.email || '';
+        }
+        document.querySelectorAll('.char-count').forEach(el => el.innerText = `0 / ${el.innerText.split(' / ')[1]}`);
+  }
 
   function loadRequests() {
     if(!currentUser) return;
@@ -866,7 +922,6 @@
     }).join('');
   }
 
-  // --- 🔥 Modified renderAdminTable for View Mode & Quick Actions 🔥 ---
   function renderAdminTable(list) {
     const tbody = document.getElementById('admin-table-body');
     document.getElementById('admin-count').innerText = `${list.length} รายการ`;
@@ -1135,16 +1190,13 @@
     ys.forEach(s => s.innerHTML = opts);
   }
 
-  // --- 🔥 NEW FUNCTIONS FOR ADMIN VIEW MODE 🔥 ---
   function viewRequest(fileId) {
     const data = adminDataList.find(item => item.fileId === fileId);
     if (!data) return;
 
-    // Scroll to form
     const formContainer = document.getElementById('mainFormContainer');
     formContainer.scrollIntoView({ behavior: 'smooth' });
     
-    // Add Alert Box & Highlight
     formContainer.classList.add('view-mode-active');
     
     let exitContainer = document.getElementById('exit-view-container');
@@ -1152,7 +1204,6 @@
         exitContainer = document.createElement('div');
         exitContainer.id = 'exit-view-container';
         exitContainer.className = 'alert alert-warning shadow-sm mb-3 d-flex justify-content-between align-items-center';
-        // Insert before mainForm
         document.getElementById('mainForm').before(exitContainer);
     }
     
@@ -1164,7 +1215,6 @@
         <button class="btn btn-sm btn-dark px-3" onclick="exitViewMode()">ปิดโหมดดูข้อมูล</button>
     `;
 
-    // Fill Data
     setVal('custom_filename', data.custom_filename || '');
     setVal('program', data.program);
     setVal('year', data.year);
@@ -1175,10 +1225,8 @@
     setVal('address', data.address);
     setVal('request_type', data.type); 
     
-    // Trigger topic change logic
     toggleFields(data.type);
 
-    // Dynamic Fields (Now populated by ...rawData from server!)
     setVal('major_sel', data.major_sel);
     setVal('major_from', data.major_from);
     setVal('major_to', data.major_to);
@@ -1194,14 +1242,12 @@
     setVal('other', data.other);
     setVal('reason_full', data.reason_full || data.reason);
 
-    // Disable All Inputs
     const form = document.getElementById('mainForm');
     form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => {
         el.disabled = true;
         if(el.type === 'submit') el.classList.add('hidden');
     });
 
-    // Disable Canvas
     const canvas = document.getElementById('sig-canvas');
     canvas.style.pointerEvents = 'none';
     canvas.style.opacity = '0.5';
@@ -1216,12 +1262,10 @@
   }
 
   function exitViewMode() {
-      // Remove Highlight & Alert
       document.getElementById('mainFormContainer').classList.remove('view-mode-active');
       const exitContainer = document.getElementById('exit-view-container');
       if(exitContainer) exitContainer.remove();
 
-      // Reset Form & Enable Inputs
       const form = document.getElementById('mainForm');
       form.reset();
       form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => {
@@ -1229,14 +1273,12 @@
           if(el.type === 'submit') el.classList.remove('hidden');
       });
 
-      // Reset Canvas
       const canvas = document.getElementById('sig-canvas');
       canvas.style.pointerEvents = 'auto';
       canvas.style.opacity = '1';
       clearSig();
       toggleFields('');
 
-      // Restore Current User Data (if login)
       if(currentUser) {
         document.getElementById('main_year').value = currentUser.year || '';
         document.getElementById('main_tel').value = currentUser.tel || '';
