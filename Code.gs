@@ -116,7 +116,6 @@ function registerUser(formObject) {
   const hashedPassword = hashPassword(formObject.reg_password, salt);
   const verifyToken = generateToken();
   const verifyLink = `${getScriptUrl()}?page=verify&token=${verifyToken}`;
-  
   userSheet.appendRow([
     formObject.reg_username, 
     hashedPassword, 
@@ -207,22 +206,27 @@ function changePassword(user, oldPass, newPass) {
   return { status: 'error', message: 'รหัสเดิมผิด' };
 }
 
-function processForm(formData, userInfo) {
+// --- 🔥 Modified processForm to Support PDF Attachment 🔥 ---
+async function processForm(formData, userInfo) {
   try {
     const destFolder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
     const templateFile = DriveApp.getFileById(TEMPLATE_SLIDE_ID);
+    
+    // ตั้งชื่อไฟล์
     let fileName = formData.custom_filename || `Request_${userInfo.std_id}_${new Date().getTime()}`;
+    
+    // 1. สร้างไฟล์ PDF หลักจาก Template
     const copyFile = templateFile.makeCopy(fileName, destFolder);
     const copyId = copyFile.getId();
     const slide = SlidesApp.openById(copyId);
 
-    // ❌ REMOVED STAMP LOGIC HERE (เอาตราประทับออกแล้ว) ❌
-
+    // ใส่ลายเซ็น
     if (formData.signature_data) {
-      const firstSlide = slide.getSlides()[0]; // Defined firstSlide here as needed
+      const firstSlide = slide.getSlides()[0];
       replaceTextWithImage(firstSlide, '{{signature}}', formData.signature_data);
     }
 
+    // แทนที่ข้อมูลต่างๆ
     let fullText = formData.reason_full || "";
     let res_1 = truncate(fullText, 40);
     fullText = fullText.substring(res_1.length);
@@ -234,6 +238,7 @@ function processForm(formData, userInfo) {
     const val = (topic, value) => (reqType === topic || (Array.isArray(topic) && topic.includes(reqType))) ? value : "";
     const replace = (key, value) => slide.replaceAllText(`{{${key}}}`, value || " ");
     const tick = "✓";
+    
     replace('male', userInfo.gender === 'male' ? tick : "");
     replace('female', userInfo.gender === 'female' ? tick : "");
     replace('BJM', formData.program === 'BJM' ? tick : "");
@@ -248,8 +253,8 @@ function processForm(formData, userInfo) {
     replace('address', truncate(formData.address, 95));
     replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 10));
     replace('email', truncate(formData.email, 60));
-
-    // Fix specificData (No garbage text)
+    
+    // Fix specificData
     let specificData = "";
     if (reqType === 't1') specificData = truncate(formData.major_sel, 40);
     else if (reqType === 't2') specificData = `${truncate(formData.major_from, 40)} ไปยัง ${truncate(formData.major_to, 40)}`;
@@ -259,7 +264,7 @@ function processForm(formData, userInfo) {
     else if (reqType === 't7' || reqType === 't8') specificData = truncate(formData.location, 80);
     else if (reqType === 't9') specificData = truncate(formData.items, 80);
     else if (reqType === 't10') specificData = truncate(formData.other, 90);
-
+    
     replace('major_sel',  truncate(val('t1', formData.major_sel), 40));
     replace('major_from', truncate(val('t2', formData.major_from), 40));
     replace('major_to',   truncate(val('t2', formData.major_to), 40));
@@ -280,25 +285,67 @@ function processForm(formData, userInfo) {
 
     slide.saveAndClose();
 
-    const pdfBlob = DriveApp.getFileById(copyId).getAs('application/pdf');
-    const pdfFile = destFolder.createFile(pdfBlob);
-    const pdfUrl = pdfFile.getUrl();
-    const fileId = pdfFile.getId();
+    // แปลงไฟล์หลักเป็น PDF Blob
+    let mainPdfBlob = DriveApp.getFileById(copyId).getAs('application/pdf');
+    
+    // ลบไฟล์ Slide ชั่วคราวทิ้ง
+    DriveApp.getFileById(copyId).setTrashed(true);
+
+    // 2. ตรวจสอบและรวมไฟล์แนบ (ถ้ามี)
+    let finalPdfBlob = mainPdfBlob;
+
+    if (formData.fileAttachment) {
+      try {
+        const attachmentBlob = Utilities.newBlob(
+          Utilities.base64Decode(formData.fileAttachment.content),
+          formData.fileAttachment.mimeType,
+          formData.fileAttachment.name
+        );
+
+        // 🔥 FIX: ตรวจสอบและเลือกวิธีการเรียกใช้ PDFApp ให้รองรับทั้ง Library และ Local File 🔥
+        let mergedBlob;
+        if (typeof PDFApp !== 'undefined' && PDFApp.mergePDFs) {
+            // กรณีใช้ Library
+            mergedBlob = await PDFApp.mergePDFs([mainPdfBlob, attachmentBlob]);
+        } else if (typeof mergePDFs === 'function') {
+            // กรณี Copy โค้ดลงไฟล์ (Local)
+            mergedBlob = await mergePDFs([mainPdfBlob, attachmentBlob]);
+        } else {
+            throw new Error("ไม่พบฟังก์ชัน PDFApp.mergePDFs หรือ mergePDFs");
+        }
+
+        // ตรวจสอบว่าผลลัพธ์เป็น Blob จริงหรือไม่
+        if (mergedBlob && typeof mergedBlob.setName === 'function') {
+            finalPdfBlob = mergedBlob;
+        } else {
+            console.error("Merge returned invalid object:", mergedBlob);
+            // ถ้า merge ไม่สำเร็จ หรือ return ผิด ให้ใช้ไฟล์หลักอย่างเดียวไปก่อน กัน error
+        }
+        
+      } catch (mergeErr) {
+        console.log("Merge Error: " + mergeErr);
+        // หากรวมไม่สำเร็จ จะใช้ไฟล์หลักไปก่อน
+      }
+    }
+
+    // 3. บันทึกไฟล์สุดท้ายลง Drive
+    // 🔥 บรรทัดนี้จะไม่ Error แล้วเพราะเราเช็คแล้วว่า finalPdfBlob เป็น Blob แน่นอน
+    finalPdfBlob.setName(fileName + ".pdf");
+    const finalFile = destFolder.createFile(finalPdfBlob);
+    const pdfUrl = finalFile.getUrl();
+    const fileId = finalFile.getId();
 
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     let logSheet = ss.getSheetByName('Logs');
-    // เพิ่มคอลัมน์ Name เข้าไป
     if(!logSheet) { 
       logSheet = ss.insertSheet('Logs');
       logSheet.appendRow(['Timestamp', 'Username', 'Name', 'File Name', 'Type', 'URL', 'File ID', 'Program', 'Gender', 'Year', 'Tel', 'Major', 'Advisor', 'Email', 'Address', 'Topic Data', 'Reason', 'Status', 'Student_File', 'Admin_File', 'Raw_Data']);
     }
     
-    // Auto-expand if needed (now 21 columns)
     if (logSheet.getLastColumn() < 21) {
        logSheet.insertColumnsAfter(logSheet.getLastColumn(), 21 - logSheet.getLastColumn());
     }
 
-    // Add Title Prefix if missing
     let displayName = userInfo.name;
     if (displayName && userInfo.gender && !displayName.startsWith('นาย') && !displayName.startsWith('นาง')) {
         displayName = (userInfo.gender === 'male' ? 'นาย' : 'นางสาว') + displayName;
@@ -306,17 +353,16 @@ function processForm(formData, userInfo) {
 
     const rawDataJSON = JSON.stringify(formData);
     
-    // แทรก displayName ในคอลัมน์ที่ 3
     logSheet.appendRow([
       new Date(), 
       String(userInfo.username), 
-      displayName, // <--- Insert Name Here
+      displayName, 
       fileName, reqType, pdfUrl, fileId, 
       formData.program, userInfo.gender, formData.year, "'" + formData.tel, formData.major, 
       formData.advisor, formData.email, formData.address, specificData, formData.reason_full,
       'รอ', '', '', rawDataJSON 
     ]);
-
+    
     try {
         const topicMap = {
           't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
@@ -326,7 +372,7 @@ function processForm(formData, userInfo) {
           't9': 'ขอยืมอุปกรณ์', 't10': 'อื่นๆ'
         };
         const topicName = topicMap[reqType] || reqType;
-        const lineMsg = `🔔 มีคำร้องใหม่!\n` +
+        const lineMsg = `🔔 มีคำร้องใหม่ (พร้อมไฟล์แนบ)!\n` +
                         `👤 ชื่อ: ${displayName} (${userInfo.std_id})\n` +
                         `📝 เรื่อง: ${topicName}\n` +
                         `📂 PDF: ${pdfUrl}`;
@@ -362,21 +408,14 @@ function getRequestsData(user) {
   
   let requests = data.map(r => {
     try {
-        // UPDATE INDICES (Shifted +1 because of Name column)
         let ts = r[0];
         let timeStr = (ts instanceof Date) ? Utilities.formatDate(ts, "GMT+7", "dd/MM/yyyy HH:mm") : String(ts || "-");
         let username = String(r[1] || ""); 
-        
-        // 1. ลองดึงชื่อจาก Log ก่อน (Col 2)
         let logName = String(r[2] || "");
-        
-        // 2. ถ้าไม่มีใน Log ให้ดึงจาก User Map
         let userInfo = userMap[username] || { name: "-", std_id: "-", gender: "" };
-        
         let finalName = logName;
         if (!finalName || finalName === "" || finalName === "-") {
             finalName = String(userInfo.name);
-             // Add prefix if using fallback name
             if (finalName !== "-" && userInfo.gender && !finalName.startsWith('นาย') && !finalName.startsWith('นาง')) {
                 finalName = (String(userInfo.gender).toLowerCase() === 'male' ? 'นาย' : 'นางสาว') + finalName;
             }
@@ -392,21 +431,21 @@ function getRequestsData(user) {
             username: username,
             name: finalName, 
             std_id: String(userInfo.std_id),
-            fileName: String(r[3] || "ไม่มีชื่อไฟล์"), // Was r[2]
-            type: String(r[4] || ""),     // Was r[3]
-            pdfUrl: String(r[5] || "#"),  // Was r[4]
-            fileId: String(r[6] || ""),   // Was r[5]
+            fileName: String(r[3] || "ไม่มีชื่อไฟล์"), 
+            type: String(r[4] || ""),   
+            pdfUrl: String(r[5] || "#"),  
+            fileId: String(r[6] || ""),   
             program: String(r[7] || ""),
-            year: String(r[9] || ""),     // Skip gender(8)
+            year: String(r[9] || ""),     
             tel: String(r[10] || "").replace(/'/g, ''),
             major: String(r[11] || ""),
             advisor: String(r[12] || ""),
             email: String(r[13] || ""),
             address: String(r[14] || ""),
-            reason: String(r[16] || ""), // TopicData(15), Reason(16)
-            status: (r.length > 17) ? String(r[17] || "รอ") : "รอ", // Status moved to 17
-            studentFile: (r.length > 18) ? String(r[18] || "") : "", // StudentFile 18
-            adminFile: (r.length > 19) ? String(r[19] || "") : "",   // AdminFile 19
+            reason: String(r[16] || ""), 
+            status: (r.length > 17) ? String(r[17] || "รอ") : "รอ", 
+            studentFile: (r.length > 18) ? String(r[18] || "") : "", 
+            adminFile: (r.length > 19) ? String(r[19] || "") : "",   
             ...rawData
         };
     } catch (err) {
@@ -426,8 +465,7 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName('Logs');
     const data = sheet.getDataRange().getValues();
-    // Find by FileID (Index 6 now, was 5)
-    const rowIndex = data.findIndex(row => row[6] === relatedFileId); 
+    const rowIndex = data.findIndex(row => row[6] === relatedFileId);
     if (rowIndex <= 0) return { status: 'error', message: 'ไม่พบรายการ' };
 
     const splitBase = base64Data.split(',');
@@ -435,21 +473,15 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
     const folder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
     const file = folder.createFile(blob);
     const fileUrl = file.getUrl();
-    
-    // Expand cols for 21 columns
     if (sheet.getLastColumn() < 21) sheet.insertColumnsAfter(sheet.getLastColumn(), 21 - sheet.getLastColumn());
 
-    // Status = Col 18 (Index 17+1)
-    // StudentFile = Col 19 (Index 18+1)
-    // AdminFile = Col 20 (Index 19+1)
-
     if (uploaderRole === 'admin') {
-      sheet.getRange(rowIndex + 1, 20).setValue(fileUrl); // Admin File -> Col 20
-      sheet.getRange(rowIndex + 1, 18).setValue('เสร็จสิ้น'); // Status -> Col 18
+      sheet.getRange(rowIndex + 1, 20).setValue(fileUrl);
+      sheet.getRange(rowIndex + 1, 18).setValue('เสร็จสิ้น');
     } else {
       if (String(data[rowIndex][1]) !== String(username)) return { status: 'error', message: 'ไม่มีสิทธิ์' };
-      sheet.getRange(rowIndex + 1, 19).setValue(fileUrl); // Student File -> Col 19
-      sheet.getRange(rowIndex + 1, 18).setValue('รอเจ้าหน้าที่ตรวจสอบ'); // Status -> Col 18
+      sheet.getRange(rowIndex + 1, 19).setValue(fileUrl); 
+      sheet.getRange(rowIndex + 1, 18).setValue('รอเจ้าหน้าที่ตรวจสอบ');
 
       try {
         const topicMap = {
@@ -460,12 +492,9 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
           't9': 'ขอยืมอุปกรณ์', 't10': 'อื่นๆ'
         };
         const r = data[rowIndex];
-        const reqType = r[4]; // Type is at Index 4
+        const reqType = r[4]; 
         const topicName = topicMap[reqType] || reqType;
-        
-        // Name is at Index 2
         const nameShow = r[2] || username;
-
         const lineMsg = `🔄 Updated นักศึกษาส่งไฟล์ใหม่แล้ว!\n` +
                         `กำลังรอรับเจ้าหน้าที่รับเรื่อง\n` +
                         `👤 จาก: ${nameShow}\n` +
@@ -485,11 +514,10 @@ function adminUpdateStatus(fileId, newStatus) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Logs');
   const data = sheet.getDataRange().getValues();
-  // Find by FileID (Index 6)
   const rowIndex = data.findIndex(r => r[6] === fileId);
   if (rowIndex > 0) {
     if (sheet.getLastColumn() < 18) sheet.insertColumnsAfter(sheet.getLastColumn(), 18 - sheet.getLastColumn());
-    sheet.getRange(rowIndex + 1, 18).setValue(newStatus); // Status Col 18
+    sheet.getRange(rowIndex + 1, 18).setValue(newStatus);
     return 'อัปเดตสถานะเรียบร้อย';
   }
   return 'ไม่พบรายการ';
@@ -517,7 +545,6 @@ function deleteHistory(fileId, username) {
 
   const sheet = ss.getSheetByName('Logs');
   const data = sheet.getDataRange().getValues();
-  // FileID is Index 6
   const rowIndex = data.findIndex(r => r[6] === fileId && (String(r[1]) === String(username) || isAdmin));
   if(rowIndex > 0) { 
       try { DriveApp.getFileById(fileId).setTrashed(true);
@@ -533,18 +560,16 @@ function renameHistory(fileId, newName, username) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Logs');
   const data = sheet.getDataRange().getValues();
-  
   const userSheet = ss.getSheetByName('Users');
   const userRows = userSheet.getDataRange().getValues();
   const userObj = userRows.find(row => String(row[0]) === String(username));
   const isAdmin = userObj && userObj[12] === 'admin';
 
-  // FileID is Index 6
   const rowIndex = data.findIndex(r => r[6] === fileId && (String(r[1]) === String(username) || isAdmin));
   if(rowIndex > 0) {
       try { DriveApp.getFileById(fileId).setName(newName);
       } catch(e){}
-      sheet.getRange(rowIndex + 1, 4).setValue(newName); // File Name is Col 4
+      sheet.getRange(rowIndex + 1, 4).setValue(newName);
       return { status: 'success', message: 'แก้ไขเรียบร้อย' };
   }
   return { status: 'error', message: 'Error' };
@@ -660,7 +685,8 @@ function doPost(e) {
          subject: "📌 ได้ Group ID แล้วครับ!",
          htmlBody: "<h3>ข้อมูลจาก LINE (" + type + ")</h3>" +
                    "<p><b>Group ID / User ID คือ:</b></p>" +
-                   "<h2>" + id + "</h2>" +
+                   "<h2>" 
+                   + id + "</h2>" +
                    "<hr>" +
                    "<p>ก๊อปปี้รหัสนี้ไปใส่ในตัวแปร <b>ADMIN_USER_ID</b> ในไฟล์ Code.gs ได้เลยครับ</p>"
        });
