@@ -460,29 +460,91 @@ function getRequestsData(user) {
   return requests.reverse();
 }
 
-function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username) {
+// ฟังก์ชันอัปโหลดไฟล์เพิ่มเติม (แก้ไขให้ลบไฟล์เก่าก่อนบันทึกใหม่)
+async function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username) {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName('Logs');
     const data = sheet.getDataRange().getValues();
+    
+    // 1. หาแถวของรายการที่เกี่ยวข้อง
     const rowIndex = data.findIndex(row => row[6] === relatedFileId);
     if (rowIndex <= 0) return { status: 'error', message: 'ไม่พบรายการ' };
 
+    // 2. เตรียมไฟล์ PDF Blob
     const splitBase = base64Data.split(',');
-    const blob = Utilities.newBlob(Utilities.base64Decode(splitBase[1]), fileType, `Upload_${new Date().getTime()}`);
+    const decoded = Utilities.base64Decode(splitBase[1]);
+    let uploadBlob = Utilities.newBlob(decoded, fileType, `Upload_${new Date().getTime()}.pdf`);
+    
+    // ประกาศตัวแปร Timestamp ให้มองเห็นทั่วฟังก์ชัน
+    let timestampText = "Received: " + Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss");
+    
+    // 3. ใช้ PDFApp ประทับเวลา (ถ้าเป็น PDF)
+    if (fileType === 'application/pdf' && typeof PDFApp !== 'undefined') {
+       try {
+         const newPdfBlob = await PDFApp.setPDFBlob(uploadBlob)
+           .insertHeaderFooter({
+              header: {
+                left: { 
+                  text: timestampText,   
+                  size: 3,
+                  x: 20,                 
+                  yOffset: 10            
+                }
+              }
+           }); 
+         if (newPdfBlob) {
+            uploadBlob = newPdfBlob;
+            uploadBlob.setName(`Upload_${new Date().getTime()}.pdf`);
+         }
+       } catch (e) {
+         console.log("PDFApp Stamp Error: " + e.toString());
+       }
+    }
+
+    // 4. บันทึกไฟล์ "ใหม่" ลง Google Drive
     const folder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
-    const file = folder.createFile(blob);
+    const file = folder.createFile(uploadBlob);
     const fileUrl = file.getUrl();
+
+    // ขยายตารางถ้าคอลัมน์ไม่พอ
     if (sheet.getLastColumn() < 21) sheet.insertColumnsAfter(sheet.getLastColumn(), 21 - sheet.getLastColumn());
 
+    // 5. อัปเดตวันที่และเวลา
+    sheet.getRange(rowIndex + 1, 1).setValue(new Date()); 
+
+    // 6. อัปเดตสถานะและแจ้งเตือน (พร้อมลบไฟล์เก่า)
     if (uploaderRole === 'admin') {
+      // --- ลบไฟล์เก่าของ Admin (ถ้ามี) ---
+      const oldAdminUrl = data[rowIndex][19]; // Col 20 (Index 19)
+      if (oldAdminUrl && String(oldAdminUrl).includes('drive.google.com')) {
+          try {
+             const match = String(oldAdminUrl).match(/[-\w]{25,}/);
+             if (match) DriveApp.getFileById(match[0]).setTrashed(true);
+          } catch(e) { console.log("Failed to delete old Admin file: " + e); }
+      }
+      // -------------------------------
+
       sheet.getRange(rowIndex + 1, 20).setValue(fileUrl);
       sheet.getRange(rowIndex + 1, 18).setValue('เสร็จสิ้น');
+
     } else {
       if (String(data[rowIndex][1]) !== String(username)) return { status: 'error', message: 'ไม่มีสิทธิ์' };
-      sheet.getRange(rowIndex + 1, 19).setValue(fileUrl); 
-      sheet.getRange(rowIndex + 1, 18).setValue('รอเจ้าหน้าที่ตรวจสอบ');
+      
+      // --- ลบไฟล์เก่าของนักศึกษา (ถ้ามี) ---
+      const oldStudentUrl = data[rowIndex][18]; // Col 19 (Index 18)
+      if (oldStudentUrl && String(oldStudentUrl).includes('drive.google.com')) {
+          try {
+             const match = String(oldStudentUrl).match(/[-\w]{25,}/);
+             if (match) DriveApp.getFileById(match[0]).setTrashed(true);
+          } catch(e) { console.log("Failed to delete old Student file: " + e); }
+      }
+      // ---------------------------------
 
+      sheet.getRange(rowIndex + 1, 19).setValue(fileUrl); 
+      sheet.getRange(rowIndex + 1, 18).setValue('รอเจ้าหน้าที่ตรวจสอบ'); 
+
+      // ส่ง LINE Notify
       try {
         const topicMap = {
           't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
@@ -495,10 +557,12 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
         const reqType = r[4]; 
         const topicName = topicMap[reqType] || reqType;
         const nameShow = r[2] || username;
+        
         const lineMsg = `🔄 Updated นักศึกษาส่งไฟล์ใหม่แล้ว!\n` +
                         `กำลังรอรับเจ้าหน้าที่รับเรื่อง\n` +
                         `👤 จาก: ${nameShow}\n` +
                         `📝 เรื่อง: ${topicName}\n` +
+                        `⏱️ ส่งเมื่อ: ${timestampText}\n` +
                         `📂 ไฟล์แนบ: ${fileUrl}`;
         sendLinePushMessage(lineMsg);
       } catch(err) {
@@ -506,7 +570,7 @@ function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username)
       }
     }
 
-    return { status: 'success', message: 'อัปโหลดสำเร็จ' };
+    return { status: 'success', message: 'อัปโหลดสำเร็จ (ไฟล์เก่าถูกลบแล้ว)' };
   } catch (e) { return { status: 'error', message: e.toString() }; }
 }
 
@@ -538,6 +602,8 @@ function adminBanUser(targetEmail) {
 
 function deleteHistory(fileId, username) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
+  // ตรวจสอบสิทธิ์ (User หรือ Admin)
   const userSheet = ss.getSheetByName('Users');
   const userRows = userSheet.getDataRange().getValues();
   const currentUser = userRows.find(row => String(row[0]) === String(username));
@@ -545,12 +611,39 @@ function deleteHistory(fileId, username) {
 
   const sheet = ss.getSheetByName('Logs');
   const data = sheet.getDataRange().getValues();
+  
+  // ค้นหาแถวที่ต้องการลบ
   const rowIndex = data.findIndex(r => r[6] === fileId && (String(r[1]) === String(username) || isAdmin));
+  
   if(rowIndex > 0) { 
-      try { DriveApp.getFileById(fileId).setTrashed(true);
-      } catch(e){}
+      const rowData = data[rowIndex];
+
+      // --- 1. ลบไฟล์ต้นฉบับ (Main File) ---
+      try { 
+        DriveApp.getFileById(fileId).setTrashed(true); 
+      } catch(e) { console.log("Delete Main File Error: " + e); }
+
+      // --- 2. ลบไฟล์แนบเพิ่มของนักศึกษา (Student_File: Col 19 / Index 18) ---
+      if (rowData[18] && String(rowData[18]).includes('drive.google.com')) {
+          try {
+             // ดึง ID ออกมาจาก URL
+             const match = String(rowData[18]).match(/[-\w]{25,}/);
+             if (match) DriveApp.getFileById(match[0]).setTrashed(true);
+          } catch(e) { console.log("Delete Student File Error: " + e); }
+      }
+
+      // --- 3. ลบไฟล์แนบของ Admin (Admin_File: Col 20 / Index 19) ---
+      if (rowData[19] && String(rowData[19]).includes('drive.google.com')) {
+          try {
+             const match = String(rowData[19]).match(/[-\w]{25,}/);
+             if (match) DriveApp.getFileById(match[0]).setTrashed(true);
+          } catch(e) { console.log("Delete Admin File Error: " + e); }
+      }
+
+      // --- 4. ลบแถวใน Google Sheets ---
       sheet.deleteRow(rowIndex + 1); 
-      return { status: 'success', message: 'ลบเรียบร้อย' };
+      
+      return { status: 'success', message: 'ลบข้อมูลและไฟล์แนบทั้งหมดเรียบร้อย' };
   }
   
   return { status: 'error', message: 'เกิดข้อผิดพลาด: คุณไม่มีสิทธิ์ลบไฟล์นี้ หรือไม่พบไฟล์' };
