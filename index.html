@@ -141,12 +141,30 @@
     }
     .modal-header { border-bottom: 1px solid rgba(0,0,0,0.05); }
     .modal-footer { border-top: none; padding-top: 0; padding-bottom: 1.5rem; }
+    
+    /* Admin View Mode Highlight */
+    .view-mode-active {
+        border: 2px solid #ffc107;
+        position: relative;
+    }
+    .view-mode-active::after {
+        content: 'View Mode';
+        position: absolute;
+        top: -10px;
+        right: 20px;
+        background: #ffc107;
+        color: #000;
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
 <div id="loading" class="loading-overlay hidden">
-  <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="Loading..." style="width: 60px; margin-bottom: 15px;">
+  <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="Loading..." style="width: 60px; margin-bottom: 15px;">
   <div class="spinner-border text-primary" style="width: 2.5rem; height: 2.5rem;" role="status"></div>
   <small class="text-muted mt-2">กำลังประมวลผล...</small>
 </div>
@@ -174,7 +192,7 @@
   <div id="login-page" class="row justify-content-center align-items-center" style="min-height: 80vh;">
     <div class="col-md-5 col-lg-4">
       <div class="text-center fade-in">
-        <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="JC TU Logo" class="logo-img">
+        <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="JC TU Logo" class="logo-img">
         <h4 class="fw-bold mb-4" style="color: var(--jctu-primary);">ระบบคำร้องออนไลน์</h4>
       </div>
 
@@ -210,11 +228,11 @@
   <div id="register-page" class="hidden row justify-content-center align-items-center" style="min-height: 80vh;">
      <div class="col-md-6 fade-in">
         <div class="text-center mb-3">
-          <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="JC TU Logo" style="height: 50px;">
+          <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="JC TU Logo" style="height: 50px;">
         </div>
         <div class="card p-4">
            <h4 class="text-primary fw-bold mb-3"><i class="bi bi-person-plus"></i> ลงทะเบียน</h4>
-           <div class="alert alert-light border small text-muted"><i class="bi bi-info-circle-fill text-primary"></i> โปรดใช้อีเมลจริง เพื่อรับลิงก์ยืนยันตัวตน</div>
+           <div class="alert alert-light border small text-muted"><i class="bi bi-info-circle-fill text-primary"></i> โปรดใช้อีเมลจริง เพื่อรับลิงก์ยืนยันตัวตน (อย่าลืมตรวจสอบอีเมลขยะ)</div>
            
            <form id="regForm">
               <div class="row g-2">
@@ -259,7 +277,7 @@
                  <input type="tel" name="reg_tel" class="form-control" data-limit="10" data-type="number" required>
               </div>
               <div class="mb-4">
-                 <label class="small text-muted">Email</label>
+                 <label class="small text-muted">Email (หากใช้อีเมล TU ให้ล็อกอินผ่าน Outlook เท่านั้น Gmail จะไม่อัปเดตอีเมลใหม่ ๆ)</label>
                  <input type="email" name="reg_email" class="form-control" data-limit="60" required>
               </div>
               
@@ -310,7 +328,7 @@
   <div id="app-page" class="hidden fade-in">
     <nav class="navbar navbar-light px-4 mb-4 d-flex justify-content-between align-items-center sticky-top">
       <div class="d-flex align-items-center">
-        <img src="https://www.jc.tu.ac.th/images/jctu_logo.png" alt="Logo" style="height: 40px; margin-right: 15px;">
+        <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="Logo" style="height: 40px; margin-right: 15px;">
         <div class="lh-1">
            <span class="d-block fw-bold text-primary">JC Request</span>
            <span class="small text-muted">สวัสดี, <span id="disp_name"></span></span>
@@ -346,12 +364,13 @@
         <table class="table table-hover table-sm small align-middle">
           <thead class="table-light">
             <tr>
-              <th class="sortable" onclick="sortAdminTable('timestamp')">Date <span id="sort-timestamp" class="sort-icon"></span></th>
-              <th class="sortable" onclick="sortAdminTable('username')">User <span id="sort-username" class="sort-icon"></span></th>
-              <th class="sortable" onclick="sortAdminTable('topic')">Topic <span id="sort-topic" class="sort-icon"></span></th>
+              <th class="sortable" onclick="sortAdminTable('timestamp')">วันเวลาส่ง <span id="sort-timestamp" class="sort-icon"></span></th>
+              <th class="sortable" onclick="sortAdminTable('std_id')">เลขทะเบียน <span id="sort-std_id" class="sort-icon"></span></th>
+              <th class="sortable" onclick="sortAdminTable('name')">ชื่อ-นามสกุล <span id="sort-name" class="sort-icon"></span></th>
+              <th class="sortable" onclick="sortAdminTable('topic')">หัวข้อ <span id="sort-topic" class="sort-icon"></span></th>
               <th>File</th>
               <th class="sortable" onclick="sortAdminTable('status')">Status <span id="sort-status" class="sort-icon"></span></th>
-              <th>Actions</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody id="admin-table-body"></tbody>
@@ -389,8 +408,8 @@
           </select>
         </div>
 
-        <div class="card p-4">
-          <div class="d-flex align-items-center mb-3 border-bottom pb-2">
+        <div class="card p-4" id="mainFormContainer">
+          <div class="d-flex align-items-center mb-3 border-bottom pb-2" id="mainFormHeader">
              <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">1</div>
              <h5 class="m-0 text-primary fw-bold">ข้อมูลพื้นฐาน</h5>
           </div>
@@ -501,7 +520,16 @@
             
             <div class="mb-4">
               <label class="fw-bold mb-1">เหตุผลประกอบ</label>
-              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="280" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
+              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="245" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
+            </div>
+
+            <div class="mb-4">
+              <label class="fw-bold mb-2">เอกสารแนบ (PDF เท่านั้น) <span class="badge bg-warning text-dark">New!</span></label>
+              <div class="input-group">
+                <input type="file" id="attach_pdf" class="form-control" accept="application/pdf">
+                <span class="input-group-text text-muted small"><i class="bi bi-paperclip"></i> ต่อท้ายคำร้อง</span>
+              </div>
+              <div class="form-text">หากมีเอกสารเพิ่มเติม สามารถอัปโหลดเพื่อรวมเป็นไฟล์เดียวกันได้</div>
             </div>
 
             <div class="mb-4 text-center p-3 border rounded bg-white">
@@ -541,15 +569,12 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-  // --- 🔥 Custom Modal Helper Functions 🔥 ---
-  // สร้างตัวแปรควบคุม Modal ของ Bootstrap
   let myModalObj = null;
   document.addEventListener('DOMContentLoaded', () => {
       const myModalEl = document.getElementById('customModal');
       myModalObj = new bootstrap.Modal(myModalEl);
   });
 
-  // แทนที่ alert()
   function showAlert(msg, title = 'แจ้งเตือน', callback = null) {
       document.getElementById('customModalTitle').innerText = title;
       document.getElementById('customModalBody').innerHTML = `<p class="m-0 fs-6">${msg}</p>`;
@@ -566,7 +591,6 @@
       myModalObj.show();
   }
 
-  // แทนที่ confirm()
   function showConfirm(msg, onConfirm) {
       document.getElementById('customModalTitle').innerText = 'ยืนยันการทำรายการ';
       document.getElementById('customModalBody').innerHTML = `<p class="m-0 fs-6">${msg}</p>`;
@@ -581,7 +605,6 @@
       };
   }
 
-  // แทนที่ prompt()
   function showPrompt(msg, placeholder, onConfirm) {
       document.getElementById('customModalTitle').innerText = 'ระบุข้อมูล';
       document.getElementById('customModalBody').innerHTML = `
@@ -594,7 +617,6 @@
       `;
       myModalObj.show();
       
-      // Auto focus
       const el = document.getElementById('customModal');
       const handler = () => {
            document.getElementById('modalPromptInput').focus();
@@ -610,8 +632,6 @@
           }
       };
   }
-
-  // --- End Custom Modal Helpers ---
 
   let currentUser = null;
   let globalTemplates = [];
@@ -651,7 +671,7 @@
   const serverStatus = "<?= serverStatus ?>";
 
   window.onload = function() {
-    loadMOTD(); // 🔥 โหลด MOTD 🔥
+    loadMOTD();
 
     if (serverMsg && serverMsg !== 'undefined') {
       const alertBox = document.getElementById('server-alert');
@@ -717,7 +737,6 @@
       location.reload(); 
   }
 
-  // --- LOGIC (Updated to use Custom Modals) ---
   document.getElementById('loginForm').addEventListener('submit', e => {
     e.preventDefault(); toggleLoad(true);
     google.script.run.withSuccessHandler(res => {
@@ -772,27 +791,77 @@
     }).changePassword(currentUser.username, data.get('old_pass'), data.get('new_pass'));
   });
 
-  document.getElementById('mainForm').addEventListener('submit', function(e) {
+  // --- 🔥 Modified Submit Handler for File Attachment 🔥 ---
+  document.getElementById('mainForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     if(!currentUser) return;
-    saveSig(); toggleLoad(true);
-    const data = {}; new FormData(this).forEach((v,k)=>data[k]=v);
+
+    // ตรวจสอบไฟล์แนบ
+    const attachInput = document.getElementById('attach_pdf');
+    if (attachInput.files.length > 0 && attachInput.files[0].type !== 'application/pdf') {
+        showAlert('กรุณาอัปโหลดไฟล์ PDF เท่านั้น', 'รูปแบบไฟล์ไม่ถูกต้อง');
+        return;
+    }
+
+    saveSig(); 
+    toggleLoad(true);
+    
+    // เตรียมข้อมูล Form Data
+    const data = {}; 
+    new FormData(this).forEach((v,k)=>data[k]=v);
+
+    // --- ส่วนที่เพิ่ม: อ่านไฟล์แนบเป็น Base64 (ถ้ามี) ---
+    if (attachInput.files.length > 0) {
+       try {
+         const fileData = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve({
+                name: attachInput.files[0].name,
+                mimeType: attachInput.files[0].type,
+                content: reader.result.split(',')[1] // เอาเฉพาะส่วน Base64
+            });
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(attachInput.files[0]);
+         });
+         data.fileAttachment = fileData; // แนบไปกับ object data
+       } catch (err) {
+         toggleLoad(false);
+         showAlert('เกิดข้อผิดพลาดในการอ่านไฟล์: ' + err.message);
+         return;
+       }
+    }
+    // ------------------------------------------------
+
+    // ส่งข้อมูลทั้งหมดไปที่ Server ทีเดียว
     google.script.run.withSuccessHandler(res => {
       toggleLoad(false);
       if(res.status === 'success') {
-        // 🔥 Custom Confirm instead of window.confirm 🔥
-        showConfirm('✅ สร้างคำร้องสำเร็จ! ต้องการเปิดดู PDF เลยหรือไม่?', () => {
-            window.open(res.url);
-        });
-        
-        loadRequests(); clearSig(); this.reset();
-        document.getElementById('main_year').value = currentUser.year || '';
-        document.getElementById('main_tel').value = currentUser.tel || '';
-        document.getElementById('main_email').value = currentUser.email || '';
-        document.querySelectorAll('.char-count').forEach(el => el.innerText = `0 / ${el.innerText.split(' / ')[1]}`);
-      } else showAlert(res.message, 'เกิดข้อผิดพลาด');
-    }).withFailureHandler(e => { toggleLoad(false); showAlert(e, 'Error'); }).processForm(data, currentUser);
+        finishProcess(res.url); // เรียกฟังก์ชันจบงาน
+      } else {
+        showAlert(res.message, 'เกิดข้อผิดพลาด');
+      }
+    }).withFailureHandler(e => { 
+        toggleLoad(false); 
+        showAlert(e.toString(), 'Error'); 
+    }).processForm(data, currentUser);
   });
+
+  function finishProcess(url) {
+        showConfirm('✅ สร้างคำร้อง(พร้อมแนบไฟล์)สำเร็จ! ต้องการเปิดดู PDF เลยหรือไม่?', () => {
+            window.open(url);
+        });
+        loadRequests(); 
+        clearSig(); 
+        document.getElementById('mainForm').reset();
+        document.getElementById('attach_pdf').value = ""; 
+        
+        if(currentUser) {
+            document.getElementById('main_year').value = currentUser.year || '';
+            document.getElementById('main_tel').value = currentUser.tel || '';
+            document.getElementById('main_email').value = currentUser.email || '';
+        }
+        document.querySelectorAll('.char-count').forEach(el => el.innerText = `0 / ${el.innerText.split(' / ')[1]}`);
+  }
 
   function loadRequests() {
     if(!currentUser) return;
@@ -818,6 +887,9 @@
       let badge = `<span class="badge status-wait rounded-pill"><i class="bi bi-hourglass-split"></i> รอ</span>`;
       if(i.status === 'รับเรื่องแล้ว') badge = `<span class="badge status-received rounded-pill"><i class="bi bi-check2"></i> รับเรื่องแล้ว</span>`;
       if(i.status === 'เสร็จสิ้น') badge = `<span class="badge status-done rounded-pill"><i class="bi bi-check-circle-fill"></i> เสร็จสิ้น</span>`;
+      if(i.status === 'รอเจ้าหน้าที่ตรวจสอบ') badge = `<span class="badge bg-warning text-dark rounded-pill"><i class="bi bi-search"></i> รอตรวจสอบ</span>`;
+      if(i.status === 'แก้ไข') badge = `<span class="badge bg-danger rounded-pill"><i class="bi bi-exclamation-circle"></i> แก้ไข</span>`;
+
       let adminFileLink = i.adminFile ? `<div class="mt-2"><a href="${i.adminFile}" target="_blank" class="btn btn-success btn-sm w-100 shadow-sm"><i class="bi bi-file-earmark-check"></i> ดาวน์โหลดเอกสาร (ฉบับสมบูรณ์)</a></div>` : '';
 
       return `
@@ -839,7 +911,7 @@
           ${adminFileLink}
           <div class="mt-2 pt-2 border-top">
              <button class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="triggerUpload('${i.fileId}')">
-               <i class="bi bi-upload"></i> อัปโหลดไฟล์/ส่งงาน
+               <i class="bi bi-upload"></i> อัปโหลดไฟล์ที่ต้องการส่ง
              </button>
              <div class="d-flex justify-content-end gap-1">
                <button class="btn btn-sm btn-light border text-warning" onclick="renameItem('${i.fileId}')" title="แก้ไขชื่อ"><i class="bi bi-pencil"></i></button>
@@ -853,39 +925,61 @@
   function renderAdminTable(list) {
     const tbody = document.getElementById('admin-table-body');
     document.getElementById('admin-count').innerText = `${list.length} รายการ`;
-    if(list.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">ไม่พบข้อมูลคำร้อง</td></tr>'; return; }
+    if(list.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">ไม่พบข้อมูลคำร้อง</td></tr>'; return; }
 
     tbody.innerHTML = list.map(i => {
         const topicName = TOPIC_MAP[i.type] || i.type || '-';
-        let statusClass = 'bg-secondary';
-        if(i.status === 'รอ') statusClass = 'bg-warning text-dark';
-        else if(i.status === 'รับเรื่องแล้ว') statusClass = 'bg-info text-white';
-        else if(i.status === 'เสร็จสิ้น') statusClass = 'bg-success text-white';
+        
+        let statusBadgeClass = '';
+        if(i.status === 'รอ') statusBadgeClass = 'bg-warning text-dark';
+        else if(i.status === 'รอเจ้าหน้าที่ตรวจสอบ') statusBadgeClass = 'bg-warning text-dark border border-danger'; 
+        else if(i.status === 'รับเรื่องแล้ว') statusBadgeClass = 'bg-info text-white';
+        else if(i.status === 'แก้ไข') statusBadgeClass = 'bg-danger text-white';
+        else if(i.status === 'เสร็จสิ้น') statusBadgeClass = 'bg-success text-white';
+        else statusBadgeClass = 'bg-secondary text-white';
 
         return `
-      <tr class="align-middle">
+      <tr class="align-middle" onclick="viewRequest('${i.fileId}')" style="cursor: pointer;" title="คลิกเพื่อดูรายละเอียด">
         <td class="text-nowrap text-muted small">${i.timestamp}</td>
-        <td class="fw-bold text-primary">${i.username}</td>
+        <td class="text-primary fw-bold">${i.std_id}</td>
+        <td>${i.name}</td>
         <td><span class="badge bg-light text-dark border fw-normal">${topicName}</span></td>
-        <td><a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-light border"><i class="bi bi-file-pdf text-danger"></i> PDF</a></td>
-        <td>
-          <select class="form-select form-select-sm badge ${statusClass} border-0" 
+        <td onclick="event.stopPropagation()">
+            <a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-light border"><i class="bi bi-file-pdf text-danger"></i> PDF</a>
+        </td>
+        <td onclick="event.stopPropagation()">
+          <select class="form-select form-select-sm badge ${statusBadgeClass} border-0" 
                   style="width:auto; cursor:pointer; padding-right: 2rem;" 
-                  onchange="changeStatus('${i.fileId}', this.value); this.className='form-select form-select-sm border-0 badge '+ (this.value==='รอ'?'bg-warning text-dark':(this.value==='รับเรื่องแล้ว'?'bg-info text-white':'bg-success text-white'))">
+                  onchange="changeStatus('${i.fileId}', this.value); updateBadgeColor(this)">
             <option value="รอ" class="bg-white text-dark" ${i.status==='รอ'?'selected':''}>รอ</option>
-            <option value="รับเรื่องแล้ว" class="bg-white text-dark" ${i.status==='รับเรื่องแล้ว'?'selected':''}>รับเรื่อง</option>
+            <option value="รอเจ้าหน้าที่ตรวจสอบ" class="bg-white text-dark" ${i.status==='รอเจ้าหน้าที่ตรวจสอบ'?'selected':''}>รอตรวจสอบ</option>
+            <option value="รับเรื่องแล้ว" class="bg-white text-dark" ${i.status==='รับเรื่องแล้ว'?'selected':''}>รับเรื่องแล้ว</option>
+            <option value="แก้ไข" class="bg-white text-dark" ${i.status==='แก้ไข'?'selected':''}>แก้ไข</option>
             <option value="เสร็จสิ้น" class="bg-white text-dark" ${i.status==='เสร็จสิ้น'?'selected':''}>เสร็จสิ้น</option>
           </select>
         </td>
-        <td>
+        <td onclick="event.stopPropagation()">
           <div class="btn-group" role="group">
              <button class="btn btn-outline-secondary btn-sm" onclick="triggerUpload('${i.fileId}')" title="Upload Result"><i class="bi bi-upload"></i></button>
+             <button class="btn btn-outline-warning btn-sm" onclick="renameItem('${i.fileId}')" title="Edit Name"><i class="bi bi-pencil"></i></button>
+             <button class="btn btn-outline-danger btn-sm" onclick="deleteItem('${i.fileId}')" title="Delete"><i class="bi bi-trash"></i></button>
              ${i.studentFile ? `<a href="${i.studentFile}" target="_blank" class="btn btn-outline-primary btn-sm" title="View User File"><i class="bi bi-eye"></i></a>` : ''}
           </div>
         </td>
       </tr>`;
     }).join('');
     updateSortIcons();
+  }
+  
+  function updateBadgeColor(select) {
+      let val = select.value;
+      let cls = 'form-select form-select-sm border-0 badge ';
+      if(val === 'รอ') cls += 'bg-warning text-dark';
+      else if(val === 'รอเจ้าหน้าที่ตรวจสอบ') cls += 'bg-warning text-dark border border-danger';
+      else if(val === 'รับเรื่องแล้ว') cls += 'bg-info text-white';
+      else if(val === 'แก้ไข') cls += 'bg-danger text-white';
+      else if(val === 'เสร็จสิ้น') cls += 'bg-success text-white';
+      select.className = cls;
   }
 
   function sortAdminTable(col) {
@@ -910,9 +1004,11 @@
     const filtered = list.filter(item => {
         const topic = (TOPIC_MAP[item.type] || '').toLowerCase();
         const user = (item.username || '').toLowerCase();
+        const name = (item.name || '').toLowerCase();
+        const std = (item.std_id || '').toLowerCase();
         const status = (item.status || '').toLowerCase();
         const date = (item.timestamp || '').toLowerCase();
-        return user.includes(term) || topic.includes(term) || status.includes(term) || date.includes(term);
+        return user.includes(term) || name.includes(term) || std.includes(term) || topic.includes(term) || status.includes(term) || date.includes(term);
     });
     renderAdminTable(filtered);
   }
@@ -955,7 +1051,6 @@
     google.script.run.withSuccessHandler(msg => console.log(msg)).adminUpdateStatus(fileId, newStatus);
   }
   
-  // 🔥 Custom Prompt 🔥
   function promptBanUser() {
     showPrompt("กรอก Email ที่ต้องการระงับการใช้งาน:", "example@tu.ac.th", (email) => {
         toggleLoad(true);
@@ -963,7 +1058,6 @@
     });
   }
   
-  // 🔥 Custom Prompt 🔥
   function renameItem(fileId) {
      showPrompt("กรุณาใส่ชื่อไฟล์ใหม่:", "", (newName) => {
        toggleLoad(true);
@@ -975,7 +1069,6 @@
      });
   }
   
-  // 🔥 Custom Confirm 🔥
   function deleteItem(fileId) {
      showConfirm("คุณต้องการลบรายการนี้ใช่หรือไม่?", () => {
        toggleLoad(true);
@@ -988,7 +1081,10 @@
   }
 
   function toggleFields(topic) {
-    if (!topic) return;
+    if (!topic) {
+       document.querySelectorAll('.d-field').forEach(div => div.classList.add('hidden'));
+       return; 
+    }
     document.getElementById('empty-msg').classList.add('hidden');
     document.querySelectorAll('.d-field').forEach(div => {
        const topics = div.getAttribute('data-topic').split(' ');
@@ -1064,8 +1160,25 @@
   function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); document.getElementById('signature_data').value = ""; }
   function saveSig() { document.getElementById('signature_data').value = canvas.toDataURL('image/png'); }
 
-  function getVisualLen(t) { return t.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '').length; }
+  // 🔥 MODIFIED: Helper function to calculate weighted length 🔥
+  function getStrWidth(text) {
+     if(!text) return 0;
+     let total = 0;
+     for (let char of String(text)) {
+        let w = 1.0;
+        let c = char;
+        let code = c.charCodeAt(0);
+        if ((code >= 0x0E31 && code <= 0x0E3A) || (code >= 0x0E47 && code <= 0x0E4E)) w = 0;
+        else if (["ณ", "ญ", "ฌ", "ฒ", "ฑ", "ฤ", "ฦ", "W", "M", "m", "w"].includes(c)) w = 2.0; // 🔥 Updated Weight
+        else if (["เ", "แ", "ไ", "ใ", "โ", "า", "i", "l", "I", "1", "j", "f", "|", ".", ","].includes(c)) w = 0.7; // 🔥 Updated Weight
+        total += w;
+     }
+     return total;
+  }
   
+  // 🔥 MODIFIED: Input Constraint Logic to use Weights 🔥
+// ไฟล์ index.html ส่วน <script> ด้านล่าง
+
   function initInputConstraints() {
     document.querySelectorAll('[data-limit]').forEach(input => {
       const parent = input.parentNode;
@@ -1076,22 +1189,149 @@
       counterEl.className = 'char-count';
       counterEl.innerText = `0 / ${limit}`;
       input.insertAdjacentElement('afterend', counterEl);
+      
       const update = () => {
          let val = input.value;
-         if (input.getAttribute('data-type') === 'number') val = val.replace(/\D/g, '');
-         while (getVisualLen(val) > limit) val = val.slice(0, -1);
-         input.value = val;
-         const len = getVisualLen(val);
-         counterEl.innerText = `${len} / ${limit}`;
-         counterEl.classList.toggle('limit-reached', len >= limit);
+         const isNumber = input.getAttribute('data-type') === 'number'; // ✅ เช็คว่าเป็นช่องตัวเลขไหม
+
+         // ถ้าเป็นช่องตัวเลข ให้ลบตัวอักษรอื่นออกให้หมด
+         if (isNumber) val = val.replace(/\D/g, '');
+         
+         // Loop check weight
+         let currentW = 0;
+         let validStr = "";
+         
+         for(let char of val) {
+             let w = 1.0;
+             
+             if (isNumber) {
+                 w = 1.0; // ✅ ถ้าเป็นตัวเลข ให้บังคับนับเป็น 1 เสมอ (ไม่สนว่าเลข 1 จะผอมหรือไม่)
+             } else {
+                 // ถ้าเป็นข้อความปกติ ใช้วิธีนับแบบเดิม (Weight)
+                 let code = char.charCodeAt(0);
+                 if ((code >= 0x0E31 && code <= 0x0E3A) || (code >= 0x0E47 && code <= 0x0E4E)) w = 0;
+                 else if (["ณ", "ญ", "ฌ", "ฒ", "ฑ", "ฤ", "ฦ", "W", "M", "m", "w"].includes(char)) w = 2.0;
+                 else if (["เ", "แ", "ไ", "ใ", "โ", "า", "i", "l", "I", "1", "j", "f", "|", ".", ","].includes(char)) w = 0.7;
+             }
+             
+             if(currentW + w > limit) break; // เกินลิมิตให้หยุด
+             validStr += char;
+             currentW += w;
+         }
+         
+         if(validStr !== val) input.value = validStr; // ตัดส่วนเกินออกใน Input
+         
+         // แสดงผลตัวนับ
+         const displayW = Math.floor(currentW); 
+         counterEl.innerText = `${displayW} / ${limit}`;
+         counterEl.classList.toggle('limit-reached', currentW >= limit);
       };
+      
       input.addEventListener('input', update);
       if(input.value) update();
     });
+    
+    // ...ส่วนตั้งค่าปี พ.ศ. ด้านล่างคงเดิม...
     const ys = document.querySelectorAll('.year-list');
     let opts = '<option value="">-- เลือกปี --</option>';
     for(let y=2560; y<=2570; y++) opts += `<option value="${y}">${y}</option>`;
     ys.forEach(s => s.innerHTML = opts);
+  }
+
+  function viewRequest(fileId) {
+    const data = adminDataList.find(item => item.fileId === fileId);
+    if (!data) return;
+
+    const formContainer = document.getElementById('mainFormContainer');
+    formContainer.scrollIntoView({ behavior: 'smooth' });
+    
+    formContainer.classList.add('view-mode-active');
+    
+    let exitContainer = document.getElementById('exit-view-container');
+    if (!exitContainer) {
+        exitContainer = document.createElement('div');
+        exitContainer.id = 'exit-view-container';
+        exitContainer.className = 'alert alert-warning shadow-sm mb-3 d-flex justify-content-between align-items-center';
+        document.getElementById('mainForm').before(exitContainer);
+    }
+    
+    exitContainer.innerHTML = `
+        <div>
+            <i class="bi bi-eye-fill fs-5 me-2"></i> 
+            กำลังดูข้อมูล: <strong>${data.name}</strong> (${TOPIC_MAP[data.type] || data.type})
+        </div>
+        <button class="btn btn-sm btn-dark px-3" onclick="exitViewMode()">ปิดโหมดดูข้อมูล</button>
+    `;
+
+    setVal('custom_filename', data.custom_filename || '');
+    setVal('program', data.program);
+    setVal('year', data.year);
+    setVal('tel', data.tel);
+    setVal('major', data.major);
+    setVal('advisor', data.advisor);
+    setVal('email', data.email);
+    setVal('address', data.address);
+    setVal('request_type', data.type); 
+    
+    toggleFields(data.type);
+
+    setVal('major_sel', data.major_sel);
+    setVal('major_from', data.major_from);
+    setVal('major_to', data.major_to);
+    setVal('prof_rec', data.prof_rec);
+    setVal('r_no', data.r_no);
+    setVal('reg_sem', data.reg_sem);
+    setVal('reg_year', data.reg_year);
+    setVal('reg_reasson', data.reg_reasson);
+    setVal('re_ad', data.re_ad);
+    setVal('re_ad_year', data.re_ad_year);
+    setVal('location', data.location);
+    setVal('items', data.items);
+    setVal('other', data.other);
+    setVal('reason_full', data.reason_full || data.reason);
+
+    const form = document.getElementById('mainForm');
+    form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => {
+        el.disabled = true;
+        if(el.type === 'submit') el.classList.add('hidden');
+    });
+
+    const canvas = document.getElementById('sig-canvas');
+    canvas.style.pointerEvents = 'none';
+    canvas.style.opacity = '0.5';
+  }
+
+  function setVal(name, val) {
+     const el = document.querySelector(`[name="${name}"]`);
+     if(el && val !== undefined && val !== null) {
+        el.value = val;
+        el.dispatchEvent(new Event('input'));
+     }
+  }
+
+  function exitViewMode() {
+      document.getElementById('mainFormContainer').classList.remove('view-mode-active');
+      const exitContainer = document.getElementById('exit-view-container');
+      if(exitContainer) exitContainer.remove();
+
+      const form = document.getElementById('mainForm');
+      form.reset();
+      form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => {
+          el.disabled = false;
+          if(el.type === 'submit') el.classList.remove('hidden');
+      });
+
+      const canvas = document.getElementById('sig-canvas');
+      canvas.style.pointerEvents = 'auto';
+      canvas.style.opacity = '1';
+      clearSig();
+      toggleFields('');
+
+      if(currentUser) {
+        document.getElementById('main_year').value = currentUser.year || '';
+        document.getElementById('main_tel').value = currentUser.tel || '';
+        document.getElementById('main_email').value = currentUser.email || '';
+      }
   }
 </script>
 </body>
