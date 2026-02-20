@@ -2,7 +2,6 @@
 const SPREADSHEET_ID = '1u8OaGgDcpgWdtaqTXpwWm8PX2b4I2Ovq93aKRuXol18'; 
 const TEMPLATE_SLIDE_ID = '1FEVxooVLLEmxUscy6dXiPZHPjqMn8Bu7NEAXdQ19k-w';
 const DESTINATION_FOLDER_ID = '1u1LpLsCDaUgwWYJIXn5L9D_a1sBhKoU7';
-
 // --- ROUTING & INIT ---
 function doGet(e) {
   const template = HtmlService.createTemplateFromFile('index');
@@ -23,7 +22,8 @@ function doGet(e) {
 }
 
 function getScriptUrl() { return ScriptApp.getService().getUrl(); }
-function generateToken() { return Utilities.getUuid(); }
+function generateToken() { return Utilities.getUuid();
+}
 
 function hashPassword(password, salt) {
   if (salt == null) salt = "";
@@ -214,7 +214,6 @@ async function processForm(formData, userInfo) {
     
     // ตั้งชื่อไฟล์
     let fileName = formData.custom_filename || `Request_${userInfo.std_id}_${new Date().getTime()}`;
-    
     // 1. สร้างไฟล์ PDF หลักจาก Template
     const copyFile = templateFile.makeCopy(fileName, destFolder);
     const copyId = copyFile.getId();
@@ -228,17 +227,18 @@ async function processForm(formData, userInfo) {
 
     // แทนที่ข้อมูลต่างๆ
     let fullText = formData.reason_full || "";
-    let res_1 = truncate(fullText, 40);
+    // 🔥 ปรับลด Limit ลง เพื่อแก้ปัญหาตกขอบ 🔥
+    // บรรทัดแรกเหลือ 35, บรรทัดที่เหลือเหลือ 105
+    let res_1 = truncate(fullText, 35);
     fullText = fullText.substring(res_1.length);
-    let res_2 = truncate(fullText, 120);
+    let res_2 = truncate(fullText, 105);
     fullText = fullText.substring(res_2.length);
-    let res_3 = truncate(fullText, 120);
+    let res_3 = truncate(fullText, 105);
 
     let reqType = formData.request_type;
     const val = (topic, value) => (reqType === topic || (Array.isArray(topic) && topic.includes(reqType))) ? value : "";
     const replace = (key, value) => slide.replaceAllText(`{{${key}}}`, value || " ");
     const tick = "✓";
-    
     replace('male', userInfo.gender === 'male' ? tick : "");
     replace('female', userInfo.gender === 'female' ? tick : "");
     replace('BJM', formData.program === 'BJM' ? tick : "");
@@ -253,7 +253,6 @@ async function processForm(formData, userInfo) {
     replace('address', truncate(formData.address, 95));
     replace('tel', truncate((formData.tel || "").replace(/\D/g,''), 10));
     replace('email', truncate(formData.email, 60));
-    
     // Fix specificData
     let specificData = "";
     if (reqType === 't1') specificData = truncate(formData.major_sel, 40);
@@ -287,13 +286,11 @@ async function processForm(formData, userInfo) {
 
     // แปลงไฟล์หลักเป็น PDF Blob
     let mainPdfBlob = DriveApp.getFileById(copyId).getAs('application/pdf');
-    
     // ลบไฟล์ Slide ชั่วคราวทิ้ง
     DriveApp.getFileById(copyId).setTrashed(true);
 
     // 2. ตรวจสอบและรวมไฟล์แนบ (ถ้ามี)
     let finalPdfBlob = mainPdfBlob;
-
     if (formData.fileAttachment) {
       try {
         const attachmentBlob = Utilities.newBlob(
@@ -301,7 +298,6 @@ async function processForm(formData, userInfo) {
           formData.fileAttachment.mimeType,
           formData.fileAttachment.name
         );
-
         // 🔥 FIX: ตรวจสอบและเลือกวิธีการเรียกใช้ PDFApp ให้รองรับทั้ง Library และ Local File 🔥
         let mergedBlob;
         if (typeof PDFApp !== 'undefined' && PDFApp.mergePDFs) {
@@ -319,17 +315,14 @@ async function processForm(formData, userInfo) {
             finalPdfBlob = mergedBlob;
         } else {
             console.error("Merge returned invalid object:", mergedBlob);
-            // ถ้า merge ไม่สำเร็จ หรือ return ผิด ให้ใช้ไฟล์หลักอย่างเดียวไปก่อน กัน error
         }
         
       } catch (mergeErr) {
         console.log("Merge Error: " + mergeErr);
-        // หากรวมไม่สำเร็จ จะใช้ไฟล์หลักไปก่อน
       }
     }
 
     // 3. บันทึกไฟล์สุดท้ายลง Drive
-    // 🔥 บรรทัดนี้จะไม่ Error แล้วเพราะเราเช็คแล้วว่า finalPdfBlob เป็น Blob แน่นอน
     finalPdfBlob.setName(fileName + ".pdf");
     const finalFile = destFolder.createFile(finalPdfBlob);
     const pdfUrl = finalFile.getUrl();
@@ -362,7 +355,6 @@ async function processForm(formData, userInfo) {
       formData.advisor, formData.email, formData.address, specificData, formData.reason_full,
       'รอ', '', '', rawDataJSON 
     ]);
-    
     try {
         const topicMap = {
           't1': 'เลือกเรียนกลุ่มวิชา', 't2': 'ขอเปลี่ยนกลุ่มวิชา',
@@ -413,12 +405,14 @@ function getRequestsData(user) {
         let username = String(r[1] || ""); 
         let logName = String(r[2] || "");
         let userInfo = userMap[username] || { name: "-", std_id: "-", gender: "" };
+ 
         let finalName = logName;
         if (!finalName || finalName === "" || finalName === "-") {
             finalName = String(userInfo.name);
             if (finalName !== "-" && userInfo.gender && !finalName.startsWith('นาย') && !finalName.startsWith('นาง')) {
                 finalName = (String(userInfo.gender).toLowerCase() === 'male' ? 'นาย' : 'นางสาว') + finalName;
-            }
+          
+             }
         }
    
         let rawData = {};
@@ -452,7 +446,6 @@ function getRequestsData(user) {
         return null;
     }
   }).filter(item => item !== null);
-
   if (user.role !== 'admin') {
     requests = requests.filter(r => r.username === String(user.username));
   }
@@ -460,7 +453,6 @@ function getRequestsData(user) {
   return requests.reverse();
 }
 
-// ฟังก์ชันอัปโหลดไฟล์เพิ่มเติม (แก้ไขให้ลบไฟล์เก่าก่อนบันทึกใหม่)
 async function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, username) {
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -470,7 +462,6 @@ async function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, use
     // 1. หาแถวของรายการที่เกี่ยวข้อง
     const rowIndex = data.findIndex(row => row[6] === relatedFileId);
     if (rowIndex <= 0) return { status: 'error', message: 'ไม่พบรายการ' };
-
     // 2. เตรียมไฟล์ PDF Blob
     const splitBase = base64Data.split(',');
     const decoded = Utilities.base64Decode(splitBase[1]);
@@ -478,8 +469,8 @@ async function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, use
     
     // ประกาศตัวแปร Timestamp ให้มองเห็นทั่วฟังก์ชัน
     let timestampText = "Received: " + Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss");
-    
     // 3. ใช้ PDFApp ประทับเวลา (ถ้าเป็น PDF)
+    /*
     if (fileType === 'application/pdf' && typeof PDFApp !== 'undefined') {
        try {
          const newPdfBlob = await PDFApp.setPDFBlob(uploadBlob)
@@ -492,15 +483,16 @@ async function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, use
                   yOffset: 10            
                 }
               }
-           }); 
-         if (newPdfBlob) {
+           });
+           if (newPdfBlob) {
             uploadBlob = newPdfBlob;
             uploadBlob.setName(`Upload_${new Date().getTime()}.pdf`);
-         }
+           }
        } catch (e) {
          console.log("PDFApp Stamp Error: " + e.toString());
        }
     }
+    */
 
     // 4. บันทึกไฟล์ "ใหม่" ลง Google Drive
     const folder = DriveApp.getFolderById(DESTINATION_FOLDER_ID);
@@ -509,19 +501,19 @@ async function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, use
 
     // ขยายตารางถ้าคอลัมน์ไม่พอ
     if (sheet.getLastColumn() < 21) sheet.insertColumnsAfter(sheet.getLastColumn(), 21 - sheet.getLastColumn());
-
     // 5. อัปเดตวันที่และเวลา
-    sheet.getRange(rowIndex + 1, 1).setValue(new Date()); 
-
+    sheet.getRange(rowIndex + 1, 1).setValue(new Date());
     // 6. อัปเดตสถานะและแจ้งเตือน (พร้อมลบไฟล์เก่า)
     if (uploaderRole === 'admin') {
       // --- ลบไฟล์เก่าของ Admin (ถ้ามี) ---
-      const oldAdminUrl = data[rowIndex][19]; // Col 20 (Index 19)
+      const oldAdminUrl = data[rowIndex][19];
+      // Col 20 (Index 19)
       if (oldAdminUrl && String(oldAdminUrl).includes('drive.google.com')) {
           try {
              const match = String(oldAdminUrl).match(/[-\w]{25,}/);
              if (match) DriveApp.getFileById(match[0]).setTrashed(true);
-          } catch(e) { console.log("Failed to delete old Admin file: " + e); }
+          } catch(e) { console.log("Failed to delete old Admin file: " + e);
+          }
       }
       // -------------------------------
 
@@ -530,18 +522,19 @@ async function uploadFile(base64Data, fileType, relatedFileId, uploaderRole, use
 
     } else {
       if (String(data[rowIndex][1]) !== String(username)) return { status: 'error', message: 'ไม่มีสิทธิ์' };
-      
       // --- ลบไฟล์เก่าของนักศึกษา (ถ้ามี) ---
-      const oldStudentUrl = data[rowIndex][18]; // Col 19 (Index 18)
+      const oldStudentUrl = data[rowIndex][18];
+      // Col 19 (Index 18)
       if (oldStudentUrl && String(oldStudentUrl).includes('drive.google.com')) {
           try {
              const match = String(oldStudentUrl).match(/[-\w]{25,}/);
              if (match) DriveApp.getFileById(match[0]).setTrashed(true);
-          } catch(e) { console.log("Failed to delete old Student file: " + e); }
+          } catch(e) { console.log("Failed to delete old Student file: " + e);
+          }
       }
       // ---------------------------------
 
-      sheet.getRange(rowIndex + 1, 19).setValue(fileUrl); 
+      sheet.getRange(rowIndex + 1, 19).setValue(fileUrl);
       sheet.getRange(rowIndex + 1, 18).setValue('รอเจ้าหน้าที่ตรวจสอบ'); 
 
       // ส่ง LINE Notify
@@ -602,7 +595,6 @@ function adminBanUser(targetEmail) {
 
 function deleteHistory(fileId, username) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  
   // ตรวจสอบสิทธิ์ (User หรือ Admin)
   const userSheet = ss.getSheetByName('Users');
   const userRows = userSheet.getDataRange().getValues();
@@ -614,14 +606,13 @@ function deleteHistory(fileId, username) {
   
   // ค้นหาแถวที่ต้องการลบ
   const rowIndex = data.findIndex(r => r[6] === fileId && (String(r[1]) === String(username) || isAdmin));
-  
   if(rowIndex > 0) { 
       const rowData = data[rowIndex];
-
       // --- 1. ลบไฟล์ต้นฉบับ (Main File) ---
       try { 
-        DriveApp.getFileById(fileId).setTrashed(true); 
-      } catch(e) { console.log("Delete Main File Error: " + e); }
+        DriveApp.getFileById(fileId).setTrashed(true);
+      } catch(e) { console.log("Delete Main File Error: " + e);
+      }
 
       // --- 2. ลบไฟล์แนบเพิ่มของนักศึกษา (Student_File: Col 19 / Index 18) ---
       if (rowData[18] && String(rowData[18]).includes('drive.google.com')) {
@@ -629,7 +620,8 @@ function deleteHistory(fileId, username) {
              // ดึง ID ออกมาจาก URL
              const match = String(rowData[18]).match(/[-\w]{25,}/);
              if (match) DriveApp.getFileById(match[0]).setTrashed(true);
-          } catch(e) { console.log("Delete Student File Error: " + e); }
+          } catch(e) { console.log("Delete Student File Error: " + e);
+          }
       }
 
       // --- 3. ลบไฟล์แนบของ Admin (Admin_File: Col 20 / Index 19) ---
@@ -637,12 +629,12 @@ function deleteHistory(fileId, username) {
           try {
              const match = String(rowData[19]).match(/[-\w]{25,}/);
              if (match) DriveApp.getFileById(match[0]).setTrashed(true);
-          } catch(e) { console.log("Delete Admin File Error: " + e); }
+          } catch(e) { console.log("Delete Admin File Error: " + e);
+          }
       }
 
       // --- 4. ลบแถวใน Google Sheets ---
-      sheet.deleteRow(rowIndex + 1); 
-      
+      sheet.deleteRow(rowIndex + 1);
       return { status: 'success', message: 'ลบข้อมูลและไฟล์แนบทั้งหมดเรียบร้อย' };
   }
   
@@ -668,16 +660,34 @@ function renameHistory(fileId, newName, username) {
   return { status: 'error', message: 'Error' };
 }
 
+// 🔥 MODIFIED: Weighted Truncate Function (Tuned for Safety) 🔥
 function truncate(text, limit) {
   if (!text) return "";
   text = String(text);
-  const getVisualLen = (t) => t.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '').length;
-  let current = "";
+  
+  let currentWidth = 0;
+  let result = "";
+  
   for (let char of text) {
-    if (getVisualLen(current + char) > limit) break;
-    current += char;
+    let w = 1.0;
+    let c = char;
+    let code = c.charCodeAt(0);
+    
+    // Logic การคำนวณความกว้าง (Updated Weights)
+    if ((code >= 0x0E31 && code <= 0x0E3A) || (code >= 0x0E47 && code <= 0x0E4E)) {
+      w = 0.0; // สระบนล่าง (ไม่กินที่)
+    } else if (["ณ", "ญ", "ฌ", "ฒ", "ฑ", "ฤ", "ฦ", "W", "M", "m", "w"].includes(c)) {
+      w = 2.0; // 🔥 เพิ่มจาก 1.8 เป็น 2.0 (ให้กินที่เยอะขึ้น จะได้ตัดเร็วขึ้น)
+    } else if (["เ", "แ", "ไ", "ใ", "โ", "า", "i", "l", "I", "1", "j", "f", "|", ".", ","].includes(c)) {
+      w = 0.7; // 🔥 เพิ่มจาก 0.6 เป็น 0.7
+    }
+    
+    if (currentWidth + w > limit) break;
+    result += c;
+    currentWidth += w;
   }
-  return current;
+  
+  return result;
 }
 
 function replaceTextWithImage(slide, searchText, base64Data) {
@@ -778,8 +788,7 @@ function doPost(e) {
          subject: "📌 ได้ Group ID แล้วครับ!",
          htmlBody: "<h3>ข้อมูลจาก LINE (" + type + ")</h3>" +
                    "<p><b>Group ID / User ID คือ:</b></p>" +
-                   "<h2>" 
-                   + id + "</h2>" +
+                   "<h2>" + id + "</h2>" +
                    "<hr>" +
                    "<p>ก๊อปปี้รหัสนี้ไปใส่ในตัวแปร <b>ADMIN_USER_ID</b> ในไฟล์ Code.gs ได้เลยครับ</p>"
        });
