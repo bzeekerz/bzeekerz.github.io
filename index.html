@@ -520,7 +520,7 @@
             
             <div class="mb-4">
               <label class="fw-bold mb-1">เหตุผลประกอบ</label>
-              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="280" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
+              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="245" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
             </div>
 
             <div class="mb-4">
@@ -1160,8 +1160,25 @@
   function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); document.getElementById('signature_data').value = ""; }
   function saveSig() { document.getElementById('signature_data').value = canvas.toDataURL('image/png'); }
 
-  function getVisualLen(t) { return t.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '').length; }
+  // 🔥 MODIFIED: Helper function to calculate weighted length 🔥
+  function getStrWidth(text) {
+     if(!text) return 0;
+     let total = 0;
+     for (let char of String(text)) {
+        let w = 1.0;
+        let c = char;
+        let code = c.charCodeAt(0);
+        if ((code >= 0x0E31 && code <= 0x0E3A) || (code >= 0x0E47 && code <= 0x0E4E)) w = 0;
+        else if (["ณ", "ญ", "ฌ", "ฒ", "ฑ", "ฤ", "ฦ", "W", "M", "m", "w"].includes(c)) w = 2.0; // 🔥 Updated Weight
+        else if (["เ", "แ", "ไ", "ใ", "โ", "า", "i", "l", "I", "1", "j", "f", "|", ".", ","].includes(c)) w = 0.7; // 🔥 Updated Weight
+        total += w;
+     }
+     return total;
+  }
   
+  // 🔥 MODIFIED: Input Constraint Logic to use Weights 🔥
+// ไฟล์ index.html ส่วน <script> ด้านล่าง
+
   function initInputConstraints() {
     document.querySelectorAll('[data-limit]').forEach(input => {
       const parent = input.parentNode;
@@ -1172,18 +1189,49 @@
       counterEl.className = 'char-count';
       counterEl.innerText = `0 / ${limit}`;
       input.insertAdjacentElement('afterend', counterEl);
+      
       const update = () => {
          let val = input.value;
-         if (input.getAttribute('data-type') === 'number') val = val.replace(/\D/g, '');
-         while (getVisualLen(val) > limit) val = val.slice(0, -1);
-         input.value = val;
-         const len = getVisualLen(val);
-         counterEl.innerText = `${len} / ${limit}`;
-         counterEl.classList.toggle('limit-reached', len >= limit);
+         const isNumber = input.getAttribute('data-type') === 'number'; // ✅ เช็คว่าเป็นช่องตัวเลขไหม
+
+         // ถ้าเป็นช่องตัวเลข ให้ลบตัวอักษรอื่นออกให้หมด
+         if (isNumber) val = val.replace(/\D/g, '');
+         
+         // Loop check weight
+         let currentW = 0;
+         let validStr = "";
+         
+         for(let char of val) {
+             let w = 1.0;
+             
+             if (isNumber) {
+                 w = 1.0; // ✅ ถ้าเป็นตัวเลข ให้บังคับนับเป็น 1 เสมอ (ไม่สนว่าเลข 1 จะผอมหรือไม่)
+             } else {
+                 // ถ้าเป็นข้อความปกติ ใช้วิธีนับแบบเดิม (Weight)
+                 let code = char.charCodeAt(0);
+                 if ((code >= 0x0E31 && code <= 0x0E3A) || (code >= 0x0E47 && code <= 0x0E4E)) w = 0;
+                 else if (["ณ", "ญ", "ฌ", "ฒ", "ฑ", "ฤ", "ฦ", "W", "M", "m", "w"].includes(char)) w = 2.0;
+                 else if (["เ", "แ", "ไ", "ใ", "โ", "า", "i", "l", "I", "1", "j", "f", "|", ".", ","].includes(char)) w = 0.7;
+             }
+             
+             if(currentW + w > limit) break; // เกินลิมิตให้หยุด
+             validStr += char;
+             currentW += w;
+         }
+         
+         if(validStr !== val) input.value = validStr; // ตัดส่วนเกินออกใน Input
+         
+         // แสดงผลตัวนับ
+         const displayW = Math.floor(currentW); 
+         counterEl.innerText = `${displayW} / ${limit}`;
+         counterEl.classList.toggle('limit-reached', currentW >= limit);
       };
+      
       input.addEventListener('input', update);
       if(input.value) update();
     });
+    
+    // ...ส่วนตั้งค่าปี พ.ศ. ด้านล่างคงเดิม...
     const ys = document.querySelectorAll('.year-list');
     let opts = '<option value="">-- เลือกปี --</option>';
     for(let y=2560; y<=2570; y++) opts += `<option value="${y}">${y}</option>`;
