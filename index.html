@@ -13,74 +13,27 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
   
   <style>
-    /* --- JCTU Theme Variables --- */
     :root {
-      --jctu-primary: #76236C; /* สีม่วงเม็ดมะปราง */
+      --jctu-primary: #76236C; 
       --jctu-dark: #4a1243;
       --jctu-light: #f3e5f5;
       --jctu-bg-gradient: linear-gradient(135deg, #fdfbfd 0%, #f4ebf4 100%);
     }
 
-    body { 
-      background: var(--jctu-bg-gradient); 
-      font-family: 'Sarabun', sans-serif; 
-      color: #333;
-      min-height: 100vh;
-    }
-
-    /* --- Overriding Bootstrap Colors --- */
+    body { background: var(--jctu-bg-gradient); font-family: 'Sarabun', sans-serif; color: #333; min-height: 100vh; }
     .text-primary { color: var(--jctu-primary) !important; }
     .bg-primary { background-color: var(--jctu-primary) !important; }
-    .btn-primary {
-      background-color: var(--jctu-primary);
-      border-color: var(--jctu-primary);
-      box-shadow: 0 4px 6px rgba(118, 35, 108, 0.2);
-      transition: all 0.2s ease;
-    }
-    .btn-primary:hover {
-      background-color: var(--jctu-dark);
-      border-color: var(--jctu-dark);
-      transform: translateY(-1px);
-    }
-    .btn-outline-primary {
-      color: var(--jctu-primary);
-      border-color: var(--jctu-primary);
-    }
-    .btn-outline-primary:hover {
-      background-color: var(--jctu-primary);
-      color: #fff;
-    }
+    .btn-primary { background-color: var(--jctu-primary); border-color: var(--jctu-primary); box-shadow: 0 4px 6px rgba(118, 35, 108, 0.2); transition: all 0.2s ease; }
+    .btn-primary:hover { background-color: var(--jctu-dark); border-color: var(--jctu-dark); transform: translateY(-1px); }
+    .btn-outline-primary { color: var(--jctu-primary); border-color: var(--jctu-primary); }
+    .btn-outline-primary:hover { background-color: var(--jctu-primary); color: #fff; }
 
-    /* --- UI Components --- */
-    .card { 
-      border: none; 
-      box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
-      border-radius: 16px; 
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-    }
-    
-    .logo-img {
-      max-height: 80px;
-      margin-bottom: 20px;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-    }
+    .card { border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-radius: 16px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+    .logo-img { max-height: 80px; margin-bottom: 20px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+    .navbar { background: #fff !important; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-radius: 12px; }
 
-    .navbar {
-      background: #fff !important;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      border-radius: 12px;
-    }
-
-    .form-control, .form-select {
-      border-radius: 8px;
-      border: 1px solid #e0e0e0;
-      padding: 0.6rem 0.8rem;
-    }
-    .form-control:focus, .form-select:focus {
-      border-color: var(--jctu-primary);
-      box-shadow: 0 0 0 0.25rem rgba(118, 35, 108, 0.15);
-    }
+    .form-control, .form-select { border-radius: 8px; border: 1px solid #e0e0e0; padding: 0.6rem 0.8rem; }
+    .form-control:focus, .form-select:focus { border-color: var(--jctu-primary); box-shadow: 0 0 0 0.25rem rgba(118, 35, 108, 0.15); }
 
     .hidden { display: none !important; }
     .no-resize { resize: none !important; }
@@ -88,77 +41,32 @@
     .char-count { font-size: 0.75rem; color: #999; display: block; text-align: right; margin-top: 4px; }
     .char-count.limit-reached { color: #dc3545; font-weight: 600; }
     
-    .loading-overlay { 
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-      background: rgba(255,255,255,0.85); z-index: 9999; 
-      display: flex; flex-direction: column; justify-content: center; align-items: center; 
-    }
+    .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    #sig-canvas { background: #fcfcfc; cursor: crosshair; touch-action: none; border: 2px dashed #ddd; border-radius: 8px; }
     
-    #sig-canvas { 
-      background: #fcfcfc; 
-      cursor: crosshair; 
-      touch-action: none; 
-      border: 2px dashed #ddd;
-      border-radius: 8px;
-    }
-    
-    /* Status Badges */
     .status-wait { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
     .status-received { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
     .status-done { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 
     .history-item { border-left: 4px solid transparent; transition: bg 0.2s; }
     .history-item:hover { background-color: #f8f9fa; }
-    
     .admin-panel { border-left: 5px solid var(--jctu-primary); }
     .sortable { cursor: pointer; user-select: none; position: relative; }
     .sortable:hover { background-color: #f1f1f1 !important; color: var(--jctu-primary); }
     .sort-icon { font-size: 0.8rem; margin-left: 5px; color: #ccc; }
     
-    /* Animations */
     .fade-in { animation: fadeIn 0.4s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* --- 🔥 Custom Styles for MOTD & Modals 🔥 --- */
-    .motd-box {
-      background-color: #fffdf5;
-      border: 1px solid #ffeeba;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 20px;
-      color: #856404;
-      font-size: 0.9rem;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-      display: flex; align-items: center;
-    }
+    .motd-box { background-color: #fffdf5; border: 1px solid #ffeeba; border-radius: 12px; padding: 15px; margin-bottom: 20px; color: #856404; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.03); display: flex; align-items: center; }
     .motd-box i { font-size: 1.2rem; margin-right: 10px; color: #ffc107; }
 
-    /* ปรับแต่ง Modal ให้สวยงาม */
-    .modal-content {
-      border-radius: 16px;
-      border: none;
-      box-shadow: 0 15px 40px rgba(0,0,0,0.2);
-    }
+    .modal-content { border-radius: 16px; border: none; box-shadow: 0 15px 40px rgba(0,0,0,0.2); }
     .modal-header { border-bottom: 1px solid rgba(0,0,0,0.05); }
     .modal-footer { border-top: none; padding-top: 0; padding-bottom: 1.5rem; }
     
-    /* Admin View Mode Highlight */
-    .view-mode-active {
-        border: 2px solid #ffc107;
-        position: relative;
-    }
-    .view-mode-active::after {
-        content: 'View Mode';
-        position: absolute;
-        top: -10px;
-        right: 20px;
-        background: #ffc107;
-        color: #000;
-        font-size: 10px;
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-weight: bold;
-    }
+    .view-mode-active { border: 2px solid #ffc107; position: relative; }
+    .view-mode-active::after { content: 'View Mode'; position: absolute; top: -10px; right: 20px; background: #ffc107; color: #000; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -178,10 +86,8 @@
         <h5 class="modal-title" id="customModalTitle">แจ้งเตือน</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body py-4" id="customModalBody">
-        </div>
-      <div class="modal-footer" id="customModalFooter">
-        </div>
+      <div class="modal-body py-4" id="customModalBody"></div>
+      <div class="modal-footer" id="customModalFooter"></div>
     </div>
   </div>
 </div>
@@ -195,23 +101,12 @@
         <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="JC TU Logo" class="logo-img">
         <h4 class="fw-bold mb-4" style="color: var(--jctu-primary);">ระบบคำร้องออนไลน์</h4>
       </div>
-
-      <div id="motd-container" class="motd-box fade-in hidden">
-        <i class="bi bi-megaphone-fill"></i>
-        <div id="motd-text"></div>
-      </div>
-
+      <div id="motd-container" class="motd-box fade-in hidden"><i class="bi bi-megaphone-fill"></i><div id="motd-text"></div></div>
       <div class="card p-4 fade-in">
         <h5 class="text-center mb-4 text-muted">เข้าสู่ระบบ / Login</h5>
         <form id="loginForm">
-          <div class="form-floating mb-3">
-            <input type="text" class="form-control" id="u_name" placeholder="Username" required>
-            <label for="u_name">Username</label>
-          </div>
-          <div class="form-floating mb-3">
-            <input type="password" class="form-control" id="u_pass" placeholder="Password" required>
-            <label for="u_pass">Password</label>
-          </div>
+          <div class="form-floating mb-3"><input type="text" class="form-control" id="u_name" placeholder="Username" required><label>Username</label></div>
+          <div class="form-floating mb-3"><input type="password" class="form-control" id="u_pass" placeholder="Password" required><label>Password</label></div>
           <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">เข้าสู่ระบบ</button>
         </form>
         <div class="d-flex justify-content-between mt-4 small">
@@ -219,88 +114,40 @@
           <a href="#" class="text-decoration-none fw-bold text-primary" onclick="showPage('register-page')">ลงทะเบียนใหม่</a>
         </div>
       </div>
-      <div class="text-center mt-4 text-muted small">
-        &copy; Faculty of Journalism and Mass Communication
-      </div>
     </div>
   </div>
 
   <div id="register-page" class="hidden row justify-content-center align-items-center" style="min-height: 80vh;">
-     <div class="col-md-6 fade-in">
-        <div class="text-center mb-3">
-          <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="JC TU Logo" style="height: 50px;">
-        </div>
-        <div class="card p-4">
-           <h4 class="text-primary fw-bold mb-3"><i class="bi bi-person-plus"></i> ลงทะเบียน</h4>
-           <div class="alert alert-light border small text-muted"><i class="bi bi-info-circle-fill text-primary"></i> โปรดใช้อีเมลจริง เพื่อรับลิงก์ยืนยันตัวตน (อย่าลืมตรวจสอบอีเมลขยะ)</div>
-           
-           <form id="regForm">
-              <div class="row g-2">
-                <div class="col-6 mb-2">
-                   <label class="small text-muted">Username</label>
-                   <input type="text" name="reg_username" class="form-control" required>
-                </div>
-                <div class="col-6 mb-2">
-                   <label class="small text-muted">Password</label>
-                   <input type="password" name="reg_password" class="form-control" required>
-                </div>
-              </div>
-              
-              <div class="mb-2">
-                 <label class="small text-muted">ชื่อ-นามสกุล (ภาษาไทย)</label>
-                 <input type="text" name="reg_name" class="form-control" data-limit="30" required>
-              </div>
-              
-              <div class="mb-3">
-                <label class="small text-muted d-block">เพศ</label>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" name="reg_gender" value="male" required> <label>ชาย</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" name="reg_gender" value="female" required> <label>หญิง</label>
-                </div>
-              </div>
-
-              <div class="row g-2 mb-2">
-                <div class="col-8">
-                   <label class="small text-muted">รหัสนักศึกษา</label>
-                   <input type="tel" name="reg_std_id" class="form-control" data-limit="10" data-type="number" required>
-                </div>
-                <div class="col-4">
-                   <label class="small text-muted">ชั้นปี</label>
-                   <input type="tel" name="reg_year" class="form-control" data-limit="1" data-type="number" required>
-                </div>
-              </div>
-              
-              <div class="mb-2">
-                 <label class="small text-muted">เบอร์โทรศัพท์</label>
-                 <input type="tel" name="reg_tel" class="form-control" data-limit="10" data-type="number" required>
-              </div>
-              <div class="mb-4">
-                 <label class="small text-muted">Email (หากใช้อีเมล TU ให้ล็อกอินผ่าน Outlook เท่านั้น Gmail จะไม่อัปเดตอีเมลใหม่ ๆ)</label>
-                 <input type="email" name="reg_email" class="form-control" data-limit="60" required>
-              </div>
-              
-              <button class="btn btn-primary w-100 py-2">ยืนยันการสมัคร</button>
-              <div class="text-center mt-3">
-                 <a href="#" class="text-decoration-none text-muted" onclick="showPage('login-page')"><i class="bi bi-arrow-left"></i> กลับไปหน้าเข้าสู่ระบบ</a>
-              </div>
-           </form>
-        </div>
+     <div class="col-md-6 fade-in card p-4">
+        <h4 class="text-primary fw-bold mb-3"><i class="bi bi-person-plus"></i> ลงทะเบียน</h4>
+        <form id="regForm">
+           <div class="row g-2">
+             <div class="col-6 mb-2"><label class="small text-muted">Username</label><input type="text" name="reg_username" class="form-control" required></div>
+             <div class="col-6 mb-2"><label class="small text-muted">Password</label><input type="password" name="reg_password" class="form-control" required></div>
+           </div>
+           <div class="mb-2"><label class="small text-muted">ชื่อ-นามสกุล (ภาษาไทย)</label><input type="text" name="reg_name" class="form-control" data-px-limit="160" required></div>
+           <div class="mb-3">
+             <label class="small text-muted d-block">เพศ</label>
+             <input class="form-check-input" type="radio" name="reg_gender" value="male" required> ชาย &nbsp;
+             <input class="form-check-input" type="radio" name="reg_gender" value="female" required> หญิง
+           </div>
+           <div class="row g-2 mb-2">
+             <div class="col-8"><label class="small text-muted">รหัสนักศึกษา</label><input type="tel" name="reg_std_id" class="form-control" data-char-limit="10" data-type="number" required></div>
+             <div class="col-4"><label class="small text-muted">ชั้นปี</label><input type="tel" name="reg_year" class="form-control" data-char-limit="1" data-type="number" required></div>
+           </div>
+           <div class="mb-2"><label class="small text-muted">เบอร์โทรศัพท์</label><input type="tel" name="reg_tel" class="form-control" data-char-limit="10" data-type="number" required></div>
+           <div class="mb-4"><label class="small text-muted">Email</label><input type="email" name="reg_email" class="form-control" data-px-limit="300" required></div>
+           <button class="btn btn-primary w-100 py-2">ยืนยันการสมัคร</button>
+           <div class="text-center mt-3"><a href="#" class="text-decoration-none text-muted" onclick="showPage('login-page')"><i class="bi bi-arrow-left"></i> กลับ</a></div>
+        </form>
      </div>
   </div>
 
   <div id="forgot-page" class="row justify-content-center align-items-center hidden" style="min-height: 80vh;">
     <div class="col-md-5 col-lg-4 card p-4 fade-in">
-      <div class="text-center mb-3">
-         <i class="bi bi-key display-4 text-warning"></i>
-         <h4 class="mt-2">ลืมรหัสผ่าน</h4>
-      </div>
+      <div class="text-center mb-3"><i class="bi bi-key display-4 text-warning"></i><h4 class="mt-2">ลืมรหัสผ่าน</h4></div>
       <form id="forgotForm">
-        <div class="mb-3">
-           <label class="form-label">กรอกอีเมลของคุณ</label>
-           <input type="email" id="forgot_email" class="form-control" placeholder="name@example.com" required>
-        </div>
+        <div class="mb-3"><label class="form-label">กรอกอีเมลของคุณ</label><input type="email" id="forgot_email" class="form-control" required></div>
         <button type="submit" class="btn btn-warning w-100 text-white">ส่งลิงก์รีเซ็ต</button>
         <div class="text-center mt-3"><a href="#" class="text-decoration-none" onclick="showPage('login-page')">ยกเลิก</a></div>
       </form>
@@ -312,14 +159,8 @@
       <h4 class="text-center mb-3 text-primary">ตั้งรหัสผ่านใหม่</h4>
       <form id="resetForm">
         <input type="hidden" id="reset_token">
-        <div class="mb-3">
-           <label class="small text-muted">รหัสผ่านใหม่</label>
-           <input type="password" id="new_reset_pass" class="form-control" required>
-        </div>
-        <div class="mb-4">
-           <label class="small text-muted">ยืนยันรหัสผ่านใหม่</label>
-           <input type="password" id="confirm_reset_pass" class="form-control" required>
-        </div>
+        <div class="mb-3"><label class="small text-muted">รหัสผ่านใหม่</label><input type="password" id="new_reset_pass" class="form-control" required></div>
+        <div class="mb-4"><label class="small text-muted">ยืนยันรหัสผ่านใหม่</label><input type="password" id="confirm_reset_pass" class="form-control" required></div>
         <button type="submit" class="btn btn-primary w-100">บันทึกรหัสผ่าน</button>
       </form>
     </div>
@@ -328,13 +169,11 @@
   <div id="app-page" class="hidden fade-in">
     <nav class="navbar navbar-light px-4 mb-4 d-flex justify-content-between align-items-center sticky-top">
       <div class="d-flex align-items-center">
-        <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" alt="Logo" style="height: 40px; margin-right: 15px;">
+        <img src="https://jc.tu.ac.th/storage/course/thumbnail/THzcEbNWlS1sqEPKL0d8D2drDUXnADWi.png" style="height: 40px; margin-right: 15px;">
         <div class="lh-1">
            <span class="d-block fw-bold text-primary">JC Request</span>
            <span class="small text-muted">สวัสดี, <span id="disp_name"></span></span>
         </div>
-        <span id="disp_gender" class="badge bg-light text-dark border ms-2 small d-none d-md-inline-block"></span>
-        <span id="disp_role" class="badge bg-dark ms-1 small"></span>
       </div>
       <div>
         <button class="btn btn-light btn-sm me-1 text-muted border" onclick="showChangePassModal()" title="เปลี่ยนรหัส"><i class="bi bi-gear-fill"></i></button>
@@ -347,29 +186,24 @@
         <h5 class="text-primary m-0"><i class="bi bi-shield-lock-fill"></i> ผู้ดูแลระบบ (Admin Console)</h5>
         <span class="badge bg-light text-dark border" id="admin-count">0 รายการ</span>
       </div>
-
       <div class="row g-2 mb-3">
         <div class="col-md-8">
-          <div class="input-group">
-            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-            <input type="text" id="admin-search" class="form-control border-start-0 ps-0" placeholder="ค้นหา Username, หัวข้อ, หรือ สถานะ..." onkeyup="filterAdminTable()">
-          </div>
+          <input type="text" id="admin-search" class="form-control" placeholder="ค้นหา Username, หัวข้อ, หรือ สถานะ..." onkeyup="filterAdminTable()">
         </div>
         <div class="col-md-4 text-end">
           <button class="btn btn-warning btn-sm text-white shadow-sm" onclick="promptBanUser()"><i class="bi bi-person-x"></i> Ban User</button>
         </div>
       </div>
-
       <div class="table-responsive">
         <table class="table table-hover table-sm small align-middle">
           <thead class="table-light">
             <tr>
-              <th class="sortable" onclick="sortAdminTable('timestamp')">วันเวลาส่ง <span id="sort-timestamp" class="sort-icon"></span></th>
-              <th class="sortable" onclick="sortAdminTable('std_id')">เลขทะเบียน <span id="sort-std_id" class="sort-icon"></span></th>
-              <th class="sortable" onclick="sortAdminTable('name')">ชื่อ-นามสกุล <span id="sort-name" class="sort-icon"></span></th>
-              <th class="sortable" onclick="sortAdminTable('topic')">หัวข้อ <span id="sort-topic" class="sort-icon"></span></th>
+              <th class="sortable" onclick="sortAdminTable('timestamp')">วันเวลาส่ง</th>
+              <th class="sortable" onclick="sortAdminTable('std_id')">เลขทะเบียน</th>
+              <th class="sortable" onclick="sortAdminTable('name')">ชื่อ-นามสกุล</th>
+              <th class="sortable" onclick="sortAdminTable('topic')">หัวข้อ</th>
               <th>File</th>
-              <th class="sortable" onclick="sortAdminTable('status')">Status <span id="sort-status" class="sort-icon"></span></th>
+              <th class="sortable" onclick="sortAdminTable('status')">Status</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -382,81 +216,44 @@
       <h6 class="text-warning mb-3"><i class="bi bi-key"></i> เปลี่ยนรหัสผ่าน</h6>
       <form id="changePassForm">
         <div class="row g-2 align-items-end">
-          <div class="col-md-4">
-             <label class="small text-muted">รหัสเดิม</label>
-             <input type="password" name="old_pass" class="form-control form-control-sm" required>
-          </div>
-          <div class="col-md-4">
-             <label class="small text-muted">รหัสใหม่</label>
-             <input type="password" name="new_pass" class="form-control form-control-sm" required>
-          </div>
-          <div class="col-md-4">
-             <button type="submit" class="btn btn-warning btn-sm w-100 text-white">บันทึกการเปลี่ยนแปลง</button>
-          </div>
+          <div class="col-md-4"><label class="small text-muted">รหัสเดิม</label><input type="password" name="old_pass" class="form-control form-control-sm" required></div>
+          <div class="col-md-4"><label class="small text-muted">รหัสใหม่</label><input type="password" name="new_pass" class="form-control form-control-sm" required></div>
+          <div class="col-md-4"><button type="submit" class="btn btn-warning btn-sm w-100 text-white">บันทึก</button></div>
         </div>
       </form>
-      <div class="text-end mt-2"><a href="#" class="small text-muted text-decoration-none" onclick="document.getElementById('change-pass-modal').classList.add('hidden')">ปิดหน้าต่างนี้</a></div>
+      <div class="text-end mt-2"><a href="#" class="small text-muted text-decoration-none" onclick="document.getElementById('change-pass-modal').classList.add('hidden')">ปิด</a></div>
     </div>
 
     <div class="row">
       <div class="col-lg-7 mb-4">
-        
         <div class="card p-3 mb-3 border-primary border-opacity-25" style="background-color: #fbf8fc;">
           <label class="fw-bold small mb-2 text-primary"><i class="bi bi-magic"></i> เลือกแบบฟอร์มอัตโนมัติ (Template)</label>
-          <select id="template_select" class="form-select form-select-sm" onchange="applyTemplate()">
-            <option value="">-- ไม่ใช้ Template (กรอกเอง) --</option>
-          </select>
+          <select id="template_select" class="form-select form-select-sm" onchange="applyTemplate()"><option value="">-- ไม่ใช้ Template (กรอกเอง) --</option></select>
         </div>
 
         <div class="card p-4" id="mainFormContainer">
-          <div class="d-flex align-items-center mb-3 border-bottom pb-2" id="mainFormHeader">
+          <div class="d-flex align-items-center mb-3 border-bottom pb-2">
              <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">1</div>
              <h5 class="m-0 text-primary fw-bold">ข้อมูลพื้นฐาน</h5>
           </div>
           
           <form id="mainForm">
-            <div class="mb-4">
-              <label class="small fw-bold text-muted">ตั้งชื่อไฟล์ PDF (Optional)</label>
-              <input type="text" name="custom_filename" class="form-control bg-light" placeholder="เช่น คำร้องขอสอบ_นาย ก. (ถ้าไม่ใส่ระบบจะตั้งให้)">
+            <div class="mb-4"><label class="small fw-bold text-muted">ตั้งชื่อไฟล์ PDF (Optional)</label><input type="text" name="custom_filename" class="form-control bg-light"></div>
+            
+            <div class="row g-3 mb-3">
+               <div class="col-md-12"><label class="small text-muted">หลักสูตร</label><select name="program" class="form-select"><option value="Thai">ภาคปกติ (Thai)</option><option value="BJM">โครงการพิเศษ (BJM)</option></select></div>
             </div>
             
             <div class="row g-3 mb-3">
-               <div class="col-md-12">
-                 <label class="small text-muted">หลักสูตร</label>
-                 <select name="program" class="form-select">
-                   <option value="Thai">ภาคปกติ (Thai)</option>
-                   <option value="BJM">โครงการพิเศษ (BJM)</option>
-                 </select>
-               </div>
+              <div class="col-md-4"><label class="small text-muted">ชั้นปีที่</label><input type="tel" name="year" id="main_year" class="form-control" data-char-limit="1" data-type="number" required></div>
+              <div class="col-md-8"><label class="small text-muted">เบอร์โทรศัพท์</label><input type="tel" name="tel" id="main_tel" class="form-control" data-char-limit="10" data-type="number" required></div>
             </div>
             
-            <div class="row g-3 mb-3">
-              <div class="col-md-4">
-                  <label class="small text-muted">ชั้นปีที่</label>
-                  <input type="tel" name="year" id="main_year" class="form-control" data-limit="1" data-type="number" required>
-              </div>
-              <div class="col-md-8">
-                  <label class="small text-muted">เบอร์โทรศัพท์</label>
-                  <input type="tel" name="tel" id="main_tel" class="form-control" data-limit="10" data-type="number" required>
-              </div>
-            </div>
+            <div class="mb-3"><label class="small text-muted">สาขาวิชาเอกปัจจุบัน</label><select name="major" id="major_main_dropdown" class="form-select" required></select></div>
+            <div class="mb-3"><label class="small text-muted">อาจารย์ที่ปรึกษา</label><select name="advisor" id="advisor_dropdown" class="form-select"></select></div>
+            <div class="mb-3"><label class="small text-muted">Email</label><input type="email" name="email" id="main_email" class="form-control" data-px-limit="300"></div>
             
-            <div class="mb-3">
-                <label class="small text-muted">สาขาวิชาเอกปัจจุบัน</label>
-                <select name="major" id="major_main_dropdown" class="form-select" required></select>
-            </div>
-            <div class="mb-3">
-                <label class="small text-muted">อาจารย์ที่ปรึกษา</label>
-                <select name="advisor" id="advisor_dropdown" class="form-select"></select>
-            </div>
-            <div class="mb-3">
-                <label class="small text-muted">Email</label>
-                <input type="email" name="email" id="main_email" class="form-control" data-limit="60">
-            </div>
-            <div class="mb-4">
-                <label class="small text-muted">ที่อยู่ปัจจุบัน</label>
-                <textarea name="address" class="form-control no-resize" rows="2" data-limit="95"></textarea>
-            </div>
+            <div class="mb-4"><label class="small text-muted">ที่อยู่ปัจจุบัน</label><textarea name="address" class="form-control no-resize" rows="2" data-px-limit="490"></textarea></div>
             
             <div class="d-flex align-items-center mb-3 border-bottom pb-2">
              <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">2</div>
@@ -464,7 +261,6 @@
             </div>
             
             <div class="mb-3">
-              <label class="fw-bold mb-2">เรื่องที่ต้องการยื่น</label>
               <select name="request_type" class="form-select border-primary" onchange="toggleFields(this.value)" required>
                 <option value="">-- กรุณาเลือกหัวข้อ --</option>
                 <option value="t1">1. เลือกเรียนกลุ่มวิชา</option>
@@ -481,63 +277,59 @@
             </div>
             
             <div id="dynamic-fields" class="bg-light p-4 rounded-3 mb-4 border shadow-sm">
-              <p class="text-muted text-center m-0 small" id="empty-msg"><i class="bi bi-arrow-up-circle"></i> เลือกหัวข้อด้านบนเพื่อกรอกข้อมูลเพิ่มเติม</p>
+              <p class="text-muted text-center m-0 small" id="empty-msg">เลือกหัวข้อด้านบนเพื่อกรอกข้อมูลเพิ่มเติม</p>
               
-              <div class="d-field hidden" data-topic="t1">
-                <label class="small text-muted">วิชาเอกที่เลือกเรียน</label><select name="major_sel" class="form-select major-list"></select>
-              </div>
+              <div class="d-field hidden" data-topic="t1"><label class="small text-muted">วิชาเอกที่เลือก</label><select name="major_sel" class="form-select major-list"></select></div>
               <div class="d-field hidden" data-topic="t2">
                 <label class="small text-muted">ย้ายจากเอก</label><select name="major_from" class="form-select major-list mb-2"></select>
                 <label class="small text-muted">ไปยังเอก</label><select name="major_to" class="form-select major-list"></select>
               </div>
-              <div class="d-field hidden" data-topic="t3">
-                <label class="small text-muted">เสนออาจารย์</label><select name="prof_rec" class="form-select teacher-list mb-2"></select>
-                <label class="small text-muted">จำนวนฉบับ</label><input type="tel" name="r_no" class="form-control" data-limit="1" data-type="number">
-              </div>
+              <div class="d-field hidden" data-topic="t3"><label class="small text-muted">เสนออาจารย์</label><select name="prof_rec" class="form-select teacher-list mb-2"></select><label class="small text-muted">จำนวน</label><input type="tel" name="r_no" class="form-control" data-char-limit="1" data-type="number"></div>
+              
               <div class="d-field hidden" data-topic="t5">
                 <div class="row g-2">
-                   <div class="col-4"><label class="small text-muted">เทอม</label><input name="reg_sem" class="form-control" data-limit="1" data-type="number"></div>
-                   <div class="col-4"><label class="small text-muted">ปีการศึกษา</label><select name="reg_year" class="form-select year-list"></select></div>
-                   <div class="col-12"><label class="small text-muted">เหตุผลการลาออก</label><input name="reg_reasson" class="form-control" data-limit="30"></div>
+                   <div class="col-4"><label class="small text-muted">เทอม</label><input name="reg_sem" class="form-control" data-char-limit="1" data-type="number"></div>
+                   <div class="col-4"><label class="small text-muted">ปี</label><select name="reg_year" class="form-select year-list"></select></div>
+                   <div class="col-12"><label class="small text-muted">เหตุผล</label><input name="reg_reasson" class="form-control" data-px-limit="220"></div>
                 </div>
               </div>
               <div class="d-field hidden" data-topic="t6">
                  <div class="row g-2">
-                   <div class="col-6"><label class="small text-muted">เทอมขอคืนสภาพ</label><input name="re_ad" class="form-control" data-limit="1" data-type="number"></div>
-                   <div class="col-6"><label class="small text-muted">ปีขอคืนสภาพ</label><select name="re_ad_year" class="form-select year-list"></select></div>
+                   <div class="col-6"><label class="small text-muted">เทอมคืนสภาพ</label><input name="re_ad" class="form-control" data-char-limit="1" data-type="number"></div>
+                   <div class="col-6"><label class="small text-muted">ปีคืนสภาพ</label><select name="re_ad_year" class="form-select year-list"></select></div>
                  </div>
               </div>
-              <div class="d-field hidden" data-topic="t7 t8">
-                 <label class="small text-muted">สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-limit="90">
-              </div>
-              <div class="d-field hidden" data-topic="t9">
-                 <label class="small text-muted">รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-limit="90">
-              </div>
-              <div class="d-field hidden" data-topic="t10">
-                 <label class="small text-muted">เรื่องอื่นๆ ระบุ</label><input name="other" class="form-control no-resize" data-limit="90">
-              </div>
+              <div class="d-field hidden" data-topic="t7 t8"><label class="small text-muted">สถานที่ขอใช้</label><input name="location" class="form-control no-resize" data-px-limit="425"></div>
+              <div class="d-field hidden" data-topic="t9"><label class="small text-muted">รายการอุปกรณ์</label><input name="items" class="form-control no-resize" data-px-limit="425"></div>
+              <div class="d-field hidden" data-topic="t10"><label class="small text-muted">เรื่องอื่นๆ</label><input name="other" class="form-control no-resize" data-px-limit="425"></div>
             </div>
             
-            <div class="mb-4">
-              <label class="fw-bold mb-1">เหตุผลประกอบ</label>
-              <textarea name="reason_full" class="form-control no-resize" rows="4" data-limit="245" placeholder="ระบุเหตุผลที่ต้องการยื่นคำร้อง..."></textarea>
+            <div class="mb-4 p-3 border border-danger rounded" style="background-color: #fffafb;">
+              <label class="fw-bold mb-2 text-danger"><i class="bi bi-exclamation-triangle"></i> เหตุผลประกอบ (กรุณาจัดบรรทัดด้วยตนเอง)</label>
+              
+              <div class="mb-2">
+                <label class="small text-muted fw-bold">บรรทัดที่ 1 (สั้นกว่าบรรทัดอื่น)</label>
+                <input type="text" name="res_1" class="form-control border-danger reason-line" data-px-limit="248" placeholder="ระบุเหตุผลบรรทัดแรก...">
+              </div>
+              <div class="mb-2">
+                <label class="small text-muted fw-bold">บรรทัดที่ 2</label>
+                <input type="text" name="res_2" class="form-control border-danger reason-line" data-px-limit="578" placeholder="ระบุเหตุผลบรรทัดที่สอง (ถ้ามี)...">
+              </div>
+              <div class="mb-2">
+                <label class="small text-muted fw-bold">บรรทัดที่ 3</label>
+                <input type="text" name="res_3" class="form-control border-danger reason-line" data-px-limit="578" placeholder="ระบุเหตุผลบรรทัดที่สาม (ถ้ามี)...">
+              </div>
             </div>
 
             <div class="mb-4">
-              <label class="fw-bold mb-2">เอกสารแนบ (PDF เท่านั้น) <span class="badge bg-warning text-dark">New!</span></label>
-              <div class="input-group">
-                <input type="file" id="attach_pdf" class="form-control" accept="application/pdf">
-                <span class="input-group-text text-muted small"><i class="bi bi-paperclip"></i> ต่อท้ายคำร้อง</span>
-              </div>
-              <div class="form-text">หากมีเอกสารเพิ่มเติม สามารถอัปโหลดเพื่อรวมเป็นไฟล์เดียวกันได้</div>
+              <label class="fw-bold mb-2">เอกสารแนบ (PDF เท่านั้น)</label>
+              <input type="file" id="attach_pdf" class="form-control" accept="application/pdf">
             </div>
 
             <div class="mb-4 text-center p-3 border rounded bg-white">
               <label class="fw-bold mb-2 d-block">ลงชื่อนักศึกษา (เซ็นในกรอบ)</label>
               <canvas id="sig-canvas" width="300" height="120"></canvas>
-              <div class="mt-2">
-                 <button type="button" class="btn btn-sm btn-light border" onclick="clearSig()"><i class="bi bi-eraser"></i> ล้างลายเซ็น</button>
-              </div>
+              <div class="mt-2"><button type="button" class="btn btn-sm btn-light border" onclick="clearSig()"><i class="bi bi-eraser"></i> ล้างลายเซ็น</button></div>
               <input type="hidden" name="signature_data" id="signature_data">
             </div>
 
@@ -554,12 +346,7 @@
              <h5 class="m-0 text-primary fw-bold"><i class="bi bi-clock-history"></i> ประวัติคำร้อง</h5>
              <button class="btn btn-sm btn-outline-primary rounded-pill" onclick="loadRequests()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
           </div>
-          
-          <div id="history-list" class="list-group list-group-flush small" style="max-height: 800px; overflow-y: auto;">
-             <div class="text-center text-muted py-5">
-                <div class="spinner-border text-light spinner-border-sm text-primary" role="status"></div> กำลังโหลด...
-             </div>
-          </div>
+          <div id="history-list" class="list-group list-group-flush small" style="max-height: 800px; overflow-y: auto;"></div>
         </div>
       </div>
     </div>
@@ -571,21 +358,29 @@
 <script>
   let myModalObj = null;
   document.addEventListener('DOMContentLoaded', () => {
-      const myModalEl = document.getElementById('customModal');
-      myModalObj = new bootstrap.Modal(myModalEl);
+      myModalObj = new bootstrap.Modal(document.getElementById('customModal'));
+      
+      // บล็อกการกด Enter ในช่องเหตุผล
+      document.querySelectorAll('.reason-line').forEach(input => {
+          input.addEventListener('keydown', function(e) {
+              if (e.key === 'Enter') e.preventDefault();
+          });
+          input.addEventListener('input', function(e) {
+              if (this.value.includes('\n') || this.value.includes('\r')) {
+                  this.value = this.value.replace(/[\r\n]+/g, ' ');
+                  this.dispatchEvent(new Event('input'));
+              }
+          });
+      });
   });
 
   function showAlert(msg, title = 'แจ้งเตือน', callback = null) {
       document.getElementById('customModalTitle').innerText = title;
       document.getElementById('customModalBody').innerHTML = `<p class="m-0 fs-6">${msg}</p>`;
       document.getElementById('customModalFooter').innerHTML = `<button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">ตกลง</button>`;
-      
       const el = document.getElementById('customModal');
       if(callback) {
-          const handler = () => {
-              callback();
-              el.removeEventListener('hidden.bs.modal', handler);
-          };
+          const handler = () => { callback(); el.removeEventListener('hidden.bs.modal', handler); };
           el.addEventListener('hidden.bs.modal', handler);
       }
       myModalObj.show();
@@ -599,37 +394,23 @@
           <button type="button" class="btn btn-primary px-4" id="modalConfirmBtn">ยืนยัน</button>
       `;
       myModalObj.show();
-      document.getElementById('modalConfirmBtn').onclick = () => {
-          myModalObj.hide();
-          onConfirm();
-      };
+      document.getElementById('modalConfirmBtn').onclick = () => { myModalObj.hide(); onConfirm(); };
   }
 
   function showPrompt(msg, placeholder, onConfirm) {
       document.getElementById('customModalTitle').innerText = 'ระบุข้อมูล';
-      document.getElementById('customModalBody').innerHTML = `
-          <label class="form-label text-muted small">${msg}</label>
-          <input type="text" id="modalPromptInput" class="form-control" placeholder="${placeholder}">
-      `;
+      document.getElementById('customModalBody').innerHTML = `<label class="form-label text-muted small">${msg}</label><input type="text" id="modalPromptInput" class="form-control" placeholder="${placeholder}">`;
       document.getElementById('customModalFooter').innerHTML = `
           <button type="button" class="btn btn-light border" data-bs-dismiss="modal">ยกเลิก</button>
           <button type="button" class="btn btn-primary px-4" id="modalPromptBtn">ตกลง</button>
       `;
       myModalObj.show();
-      
       const el = document.getElementById('customModal');
-      const handler = () => {
-           document.getElementById('modalPromptInput').focus();
-           el.removeEventListener('shown.bs.modal', handler);
-      };
+      const handler = () => { document.getElementById('modalPromptInput').focus(); el.removeEventListener('shown.bs.modal', handler); };
       el.addEventListener('shown.bs.modal', handler);
-
       document.getElementById('modalPromptBtn').onclick = () => {
           const val = document.getElementById('modalPromptInput').value;
-          if(val) {
-               myModalObj.hide();
-               onConfirm(val);
-          }
+          if(val) { myModalObj.hide(); onConfirm(val); }
       };
   }
 
@@ -638,25 +419,18 @@
   let currentUploadFileId = null;
   let adminDataList = [];
   let currentSort = { col: 'timestamp', order: 'desc' };
-
   const SESSION_KEY = 'JC_FORM_SESSION';
   const SESSION_DURATION = 5 * 60 * 1000; 
 
   function saveSession(userData) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({
-      user: userData,
-      expiry: new Date().getTime() + SESSION_DURATION
-    }));
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ user: userData, expiry: new Date().getTime() + SESSION_DURATION }));
   }
 
   function checkSession() {
     const sessionString = localStorage.getItem(SESSION_KEY);
     if (!sessionString) return null;
     const session = JSON.parse(sessionString);
-    if (new Date().getTime() > session.expiry) {
-      localStorage.removeItem(SESSION_KEY);
-      return null;
-    }
+    if (new Date().getTime() > session.expiry) { localStorage.removeItem(SESSION_KEY); return null; }
     return session.user;
   }
 
@@ -672,24 +446,19 @@
 
   window.onload = function() {
     loadMOTD();
-
     if (serverMsg && serverMsg !== 'undefined') {
       const alertBox = document.getElementById('server-alert');
       alertBox.className = `alert alert-${serverStatus === 'success' ? 'success' : 'danger'}`;
       alertBox.innerText = serverMsg;
       alertBox.classList.remove('hidden');
     }
-
     if (urlParams.page === 'reset' && urlParams.token) {
       document.getElementById('reset_token').value = urlParams.token;
       showPage('reset-page');
     } else {
         const savedUser = checkSession();
-        if (savedUser) {
-            setupAppUI(savedUser); 
-        } else {
-            showPage('login-page');
-        }
+        if (savedUser) { setupAppUI(savedUser); } 
+        else { showPage('login-page'); }
     }
     initInputConstraints();
   };
@@ -706,11 +475,9 @@
   function setupAppUI(user) {
     currentUser = user;
     document.getElementById('disp_name').innerText = user.name;
-    document.getElementById('disp_gender').innerText = user.gender === 'male' ? 'ชาย' : 'หญิง';
     
     if(user.role === 'admin') {
        document.getElementById('admin-section').classList.remove('hidden');
-       document.getElementById('disp_role').innerText = 'Admin';
     } else {
        document.getElementById('admin-section').classList.add('hidden');
     }
@@ -731,20 +498,14 @@
   }
   function showChangePassModal() { document.getElementById('change-pass-modal').classList.remove('hidden'); }
   function toggleLoad(s) { document.getElementById('loading').classList.toggle('hidden', !s); }
-  
-  function logout() { 
-      localStorage.removeItem(SESSION_KEY); 
-      location.reload(); 
-  }
+  function logout() { localStorage.removeItem(SESSION_KEY); location.reload(); }
 
   document.getElementById('loginForm').addEventListener('submit', e => {
     e.preventDefault(); toggleLoad(true);
     google.script.run.withSuccessHandler(res => {
       toggleLoad(false);
-      if(res.status === 'success') {
-        saveSession(res);
-        setupAppUI(res);
-      } else showAlert(res.message, 'เข้าสู่ระบบไม่สำเร็จ');
+      if(res.status === 'success') { saveSession(res); setupAppUI(res); } 
+      else showAlert(res.message, 'เข้าสู่ระบบไม่สำเร็จ');
     }).loginUser(document.getElementById('u_name').value, document.getElementById('u_pass').value);
   });
 
@@ -753,9 +514,7 @@
     const data = {}; new FormData(this).forEach((v,k)=>data[k]=v);
     google.script.run.withSuccessHandler(res => { 
         toggleLoad(false); 
-        showAlert(res.message, res.status==='success' ? 'สำเร็จ' : 'ข้อผิดพลาด', () => {
-            if(res.status==='success') showPage('login-page');
-        });
+        showAlert(res.message, res.status==='success' ? 'สำเร็จ' : 'ข้อผิดพลาด', () => { if(res.status==='success') showPage('login-page'); });
     }).registerUser(data);
   });
 
@@ -763,9 +522,7 @@
     e.preventDefault(); toggleLoad(true);
     google.script.run.withSuccessHandler(res => { 
         toggleLoad(false); 
-        showAlert(res.message, 'ผลการดำเนินการ', () => {
-            if(res.status==='success') showPage('login-page');
-        });
+        showAlert(res.message, 'ผลการดำเนินการ', () => { if(res.status==='success') showPage('login-page'); });
     }).requestPasswordReset(document.getElementById('forgot_email').value);
   });
 
@@ -775,9 +532,7 @@
     toggleLoad(true);
     google.script.run.withSuccessHandler(res => { 
         toggleLoad(false); 
-        showAlert(res.message, 'สำเร็จ', () => {
-            if(res.status==='success') window.location.href="<?= getScriptUrl() ?>"; 
-        });
+        showAlert(res.message, 'สำเร็จ', () => { if(res.status==='success') window.location.href="<?= getScriptUrl() ?>"; });
     }).submitResetPassword(document.getElementById('reset_token').value, document.getElementById('new_reset_pass').value);
   });
 
@@ -791,97 +546,63 @@
     }).changePassword(currentUser.username, data.get('old_pass'), data.get('new_pass'));
   });
 
-  // --- 🔥 Modified Submit Handler for File Attachment 🔥 ---
   document.getElementById('mainForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     if(!currentUser) return;
 
-    // ตรวจสอบไฟล์แนบ
     const attachInput = document.getElementById('attach_pdf');
     if (attachInput.files.length > 0 && attachInput.files[0].type !== 'application/pdf') {
         showAlert('กรุณาอัปโหลดไฟล์ PDF เท่านั้น', 'รูปแบบไฟล์ไม่ถูกต้อง');
         return;
     }
 
-    saveSig(); 
-    toggleLoad(true);
-    
-    // เตรียมข้อมูล Form Data
-    const data = {}; 
-    new FormData(this).forEach((v,k)=>data[k]=v);
+    saveSig(); toggleLoad(true);
+    const data = {}; new FormData(this).forEach((v,k)=>data[k]=v);
 
-    // --- ส่วนที่เพิ่ม: อ่านไฟล์แนบเป็น Base64 (ถ้ามี) ---
     if (attachInput.files.length > 0) {
        try {
          const fileData = await new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => resolve({
-                name: attachInput.files[0].name,
-                mimeType: attachInput.files[0].type,
-                content: reader.result.split(',')[1] // เอาเฉพาะส่วน Base64
-            });
+            reader.onload = () => resolve({ name: attachInput.files[0].name, mimeType: attachInput.files[0].type, content: reader.result.split(',')[1] });
             reader.onerror = error => reject(error);
             reader.readAsDataURL(attachInput.files[0]);
          });
-         data.fileAttachment = fileData; // แนบไปกับ object data
+         data.fileAttachment = fileData; 
        } catch (err) {
-         toggleLoad(false);
-         showAlert('เกิดข้อผิดพลาดในการอ่านไฟล์: ' + err.message);
-         return;
+         toggleLoad(false); showAlert('เกิดข้อผิดพลาดในการอ่านไฟล์: ' + err.message); return;
        }
     }
-    // ------------------------------------------------
 
-    // ส่งข้อมูลทั้งหมดไปที่ Server ทีเดียว
     google.script.run.withSuccessHandler(res => {
       toggleLoad(false);
-      if(res.status === 'success') {
-        finishProcess(res.url); // เรียกฟังก์ชันจบงาน
-      } else {
-        showAlert(res.message, 'เกิดข้อผิดพลาด');
-      }
-    }).withFailureHandler(e => { 
-        toggleLoad(false); 
-        showAlert(e.toString(), 'Error'); 
-    }).processForm(data, currentUser);
+      if(res.status === 'success') { finishProcess(res.url); } 
+      else { showAlert(res.message, 'เกิดข้อผิดพลาด'); }
+    }).withFailureHandler(e => { toggleLoad(false); showAlert(e.toString(), 'Error'); }).processForm(data, currentUser);
   });
 
   function finishProcess(url) {
-        showConfirm('✅ สร้างคำร้อง(พร้อมแนบไฟล์)สำเร็จ! ต้องการเปิดดู PDF เลยหรือไม่?', () => {
-            window.open(url);
-        });
-        loadRequests(); 
-        clearSig(); 
-        document.getElementById('mainForm').reset();
-        document.getElementById('attach_pdf').value = ""; 
-        
+        showConfirm('✅ สร้างคำร้อง(พร้อมแนบไฟล์)สำเร็จ! ต้องการเปิดดู PDF เลยหรือไม่?', () => { window.open(url); });
+        loadRequests(); clearSig(); document.getElementById('mainForm').reset(); document.getElementById('attach_pdf').value = ""; 
         if(currentUser) {
             document.getElementById('main_year').value = currentUser.year || '';
             document.getElementById('main_tel').value = currentUser.tel || '';
             document.getElementById('main_email').value = currentUser.email || '';
         }
-        document.querySelectorAll('.char-count').forEach(el => el.innerText = `0 / ${el.innerText.split(' / ')[1]}`);
+        document.querySelectorAll('.char-count').forEach(el => el.innerText = `0%`);
   }
 
   function loadRequests() {
     if(!currentUser) return;
     document.getElementById('history-list').innerHTML = '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> กำลังโหลดข้อมูล...</div>';
-    
     google.script.run.withSuccessHandler(data => {
       renderHistory(data);
-      if(currentUser.role === 'admin') {
-          adminDataList = data;
-          renderAdminTable(adminDataList);
-      }
+      if(currentUser.role === 'admin') { adminDataList = data; renderAdminTable(adminDataList); }
     }).getRequestsData(currentUser);
   }
 
   function renderHistory(list) {
     const el = document.getElementById('history-list');
-    if(!list.length) { 
-        el.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-inbox display-4 d-block mb-2" style="opacity:0.3"></i>ยังไม่มีประวัติคำร้อง</div>'; 
-        return; 
-    }
+    if(!list.length) { el.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-inbox display-4 d-block mb-2" style="opacity:0.3"></i>ยังไม่มีประวัติคำร้อง</div>'; return; }
     
     el.innerHTML = list.map(i => {
       let badge = `<span class="badge status-wait rounded-pill"><i class="bi bi-hourglass-split"></i> รอ</span>`;
@@ -890,29 +611,22 @@
       if(i.status === 'รอเจ้าหน้าที่ตรวจสอบ') badge = `<span class="badge bg-warning text-dark rounded-pill"><i class="bi bi-search"></i> รอตรวจสอบ</span>`;
       if(i.status === 'แก้ไข') badge = `<span class="badge bg-danger rounded-pill"><i class="bi bi-exclamation-circle"></i> แก้ไข</span>`;
 
-      let adminFileLink = i.adminFile ? `<div class="mt-2"><a href="${i.adminFile}" target="_blank" class="btn btn-success btn-sm w-100 shadow-sm"><i class="bi bi-file-earmark-check"></i> ดาวน์โหลดเอกสาร (ฉบับสมบูรณ์)</a></div>` : '';
+      let adminFileLink = i.adminFile ? `<div class="mt-2"><a href="${i.adminFile}" target="_blank" class="btn btn-success btn-sm w-100 shadow-sm"><i class="bi bi-file-earmark-check"></i> ดาวน์โหลดเอกสารสมบูรณ์</a></div>` : '';
 
       return `
         <div class="list-group-item py-3 px-2 history-item border-bottom">
           <div class="d-flex justify-content-between align-items-start mb-2">
-            <div style="flex:1;">
-               <strong class="d-block text-dark text-truncate" style="max-width:180px;">${i.fileName}</strong>
-               <small class="text-muted"><i class="bi bi-calendar"></i> ${i.timestamp}</small>
-            </div>
+            <div style="flex:1;"><strong class="d-block text-dark text-truncate" style="max-width:180px;">${i.fileName}</strong><small class="text-muted"><i class="bi bi-calendar"></i> ${i.timestamp}</small></div>
             ${badge}
           </div>
-          <div class="small bg-light p-2 rounded">
-             <i class="bi bi-tag-fill text-secondary"></i> ${i.type}
-          </div>
+          <div class="small bg-light p-2 rounded"><i class="bi bi-tag-fill text-secondary"></i> ${i.type}</div>
           <div class="mt-2 d-flex gap-2">
              <a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-file-pdf"></i> ต้นฉบับ</a>
              ${i.studentFile ? `<a href="${i.studentFile}" target="_blank" class="btn btn-sm btn-outline-info flex-grow-1"><i class="bi bi-file-earmark-arrow-up"></i> ไฟล์แนบ</a>` : ''}
           </div>
           ${adminFileLink}
           <div class="mt-2 pt-2 border-top">
-             <button class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="triggerUpload('${i.fileId}')">
-               <i class="bi bi-upload"></i> อัปโหลดไฟล์ที่ต้องการส่ง
-             </button>
+             <button class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="triggerUpload('${i.fileId}')"><i class="bi bi-upload"></i> อัปโหลดไฟล์ที่ต้องการส่ง</button>
              <div class="d-flex justify-content-end gap-1">
                <button class="btn btn-sm btn-light border text-warning" onclick="renameItem('${i.fileId}')" title="แก้ไขชื่อ"><i class="bi bi-pencil"></i></button>
                <button class="btn btn-sm btn-light border text-danger" onclick="deleteItem('${i.fileId}')" title="ลบรายการ"><i class="bi bi-trash"></i></button>
@@ -929,7 +643,6 @@
 
     tbody.innerHTML = list.map(i => {
         const topicName = TOPIC_MAP[i.type] || i.type || '-';
-        
         let statusBadgeClass = '';
         if(i.status === 'รอ') statusBadgeClass = 'bg-warning text-dark';
         else if(i.status === 'รอเจ้าหน้าที่ตรวจสอบ') statusBadgeClass = 'bg-warning text-dark border border-danger'; 
@@ -939,18 +652,14 @@
         else statusBadgeClass = 'bg-secondary text-white';
 
         return `
-      <tr class="align-middle" onclick="viewRequest('${i.fileId}')" style="cursor: pointer;" title="คลิกเพื่อดูรายละเอียด">
+      <tr class="align-middle" onclick="viewRequest('${i.fileId}')" style="cursor: pointer;">
         <td class="text-nowrap text-muted small">${i.timestamp}</td>
         <td class="text-primary fw-bold">${i.std_id}</td>
         <td>${i.name}</td>
         <td><span class="badge bg-light text-dark border fw-normal">${topicName}</span></td>
+        <td onclick="event.stopPropagation()"><a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-light border"><i class="bi bi-file-pdf text-danger"></i> PDF</a></td>
         <td onclick="event.stopPropagation()">
-            <a href="${i.pdfUrl}" target="_blank" class="btn btn-sm btn-light border"><i class="bi bi-file-pdf text-danger"></i> PDF</a>
-        </td>
-        <td onclick="event.stopPropagation()">
-          <select class="form-select form-select-sm badge ${statusBadgeClass} border-0" 
-                  style="width:auto; cursor:pointer; padding-right: 2rem;" 
-                  onchange="changeStatus('${i.fileId}', this.value); updateBadgeColor(this)">
+          <select class="form-select form-select-sm badge ${statusBadgeClass} border-0" style="width:auto; cursor:pointer;" onchange="changeStatus('${i.fileId}', this.value); updateBadgeColor(this)">
             <option value="รอ" class="bg-white text-dark" ${i.status==='รอ'?'selected':''}>รอ</option>
             <option value="รอเจ้าหน้าที่ตรวจสอบ" class="bg-white text-dark" ${i.status==='รอเจ้าหน้าที่ตรวจสอบ'?'selected':''}>รอตรวจสอบ</option>
             <option value="รับเรื่องแล้ว" class="bg-white text-dark" ${i.status==='รับเรื่องแล้ว'?'selected':''}>รับเรื่องแล้ว</option>
@@ -959,11 +668,11 @@
           </select>
         </td>
         <td onclick="event.stopPropagation()">
-          <div class="btn-group" role="group">
-             <button class="btn btn-outline-secondary btn-sm" onclick="triggerUpload('${i.fileId}')" title="Upload Result"><i class="bi bi-upload"></i></button>
-             <button class="btn btn-outline-warning btn-sm" onclick="renameItem('${i.fileId}')" title="Edit Name"><i class="bi bi-pencil"></i></button>
-             <button class="btn btn-outline-danger btn-sm" onclick="deleteItem('${i.fileId}')" title="Delete"><i class="bi bi-trash"></i></button>
-             ${i.studentFile ? `<a href="${i.studentFile}" target="_blank" class="btn btn-outline-primary btn-sm" title="View User File"><i class="bi bi-eye"></i></a>` : ''}
+          <div class="btn-group">
+             <button class="btn btn-outline-secondary btn-sm" onclick="triggerUpload('${i.fileId}')"><i class="bi bi-upload"></i></button>
+             <button class="btn btn-outline-warning btn-sm" onclick="renameItem('${i.fileId}')"><i class="bi bi-pencil"></i></button>
+             <button class="btn btn-outline-danger btn-sm" onclick="deleteItem('${i.fileId}')"><i class="bi bi-trash"></i></button>
+             ${i.studentFile ? `<a href="${i.studentFile}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i></a>` : ''}
           </div>
         </td>
       </tr>`;
@@ -1028,69 +737,63 @@
     if(activeHeader) { activeHeader.className = `sortable sort-${currentSort.order}`; }
   }
 
-  function triggerUpload(fileId) {
-    currentUploadFileId = fileId;
-    document.getElementById('file-input').click();
-  }
+  function triggerUpload(fileId) { currentUploadFileId = fileId; document.getElementById('file-input').click(); }
   document.getElementById('file-input').addEventListener('change', function() {
     if (this.files.length === 0) return;
-    const file = this.files[0];
-    const reader = new FileReader();
-    toggleLoad(true);
+    const file = this.files[0]; const reader = new FileReader(); toggleLoad(true);
     reader.onload = function(e) {
-      google.script.run.withSuccessHandler(res => {
-        toggleLoad(false);
-        showAlert(res.message, res.status==='success'?'สำเร็จ':'ข้อผิดพลาด');
-        loadRequests(); 
+      google.script.run.withSuccessHandler(res => { toggleLoad(false); showAlert(res.message, res.status==='success'?'สำเร็จ':'ข้อผิดพลาด'); loadRequests(); 
       }).uploadFile(e.target.result, file.type, currentUploadFileId, currentUser.role, currentUser.username);
     };
     reader.readAsDataURL(file);
   });
 
-  function changeStatus(fileId, newStatus) {
-    google.script.run.withSuccessHandler(msg => console.log(msg)).adminUpdateStatus(fileId, newStatus);
-  }
-  
-  function promptBanUser() {
-    showPrompt("กรอก Email ที่ต้องการระงับการใช้งาน:", "example@tu.ac.th", (email) => {
-        toggleLoad(true);
-        google.script.run.withSuccessHandler(res => { toggleLoad(false); showAlert(res); }).adminBanUser(email);
-    });
-  }
-  
-  function renameItem(fileId) {
-     showPrompt("กรุณาใส่ชื่อไฟล์ใหม่:", "", (newName) => {
-       toggleLoad(true);
-       google.script.run.withSuccessHandler(res => {
-         toggleLoad(false);
-         showAlert(res.message);
-         if(res.status==='success') loadRequests();
-       }).renameHistory(fileId, newName, currentUser.username);
-     });
-  }
-  
-  function deleteItem(fileId) {
-     showConfirm("คุณต้องการลบรายการนี้ใช่หรือไม่?", () => {
-       toggleLoad(true);
-       google.script.run.withSuccessHandler(res => {
-         toggleLoad(false);
-         showAlert(res.message);
-         if(res.status==='success') loadRequests();
-       }).deleteHistory(fileId, currentUser.username);
-     });
-  }
+  function changeStatus(fileId, newStatus) { google.script.run.withSuccessHandler(msg => console.log(msg)).adminUpdateStatus(fileId, newStatus); }
+  function promptBanUser() { showPrompt("กรอก Email:", "example@tu.ac.th", (email) => { toggleLoad(true); google.script.run.withSuccessHandler(res => { toggleLoad(false); showAlert(res); }).adminBanUser(email); }); }
+  function renameItem(fileId) { showPrompt("ชื่อไฟล์ใหม่:", "", (newName) => { toggleLoad(true); google.script.run.withSuccessHandler(res => { toggleLoad(false); showAlert(res.message); if(res.status==='success') loadRequests(); }).renameHistory(fileId, newName, currentUser.username); }); }
+  function deleteItem(fileId) { showConfirm("ลบรายการนี้?", () => { toggleLoad(true); google.script.run.withSuccessHandler(res => { toggleLoad(false); showAlert(res.message); if(res.status==='success') loadRequests(); }).deleteHistory(fileId, currentUser.username); }); }
 
   function toggleFields(topic) {
-    if (!topic) {
-       document.querySelectorAll('.d-field').forEach(div => div.classList.add('hidden'));
-       return; 
-    }
+    if (!topic) { document.querySelectorAll('.d-field').forEach(div => div.classList.add('hidden')); return; }
     document.getElementById('empty-msg').classList.add('hidden');
     document.querySelectorAll('.d-field').forEach(div => {
        const topics = div.getAttribute('data-topic').split(' ');
-       if (topics.includes(topic)) div.classList.remove('hidden');
-       else div.classList.add('hidden');
+       if (topics.includes(topic)) div.classList.remove('hidden'); else div.classList.add('hidden');
     });
+  }
+
+  // --- 🔥 ฟังก์ชันพระเอก: วัดความกว้างด้วย Canvas 🔥 ---
+  function getTextWidth(text, font) {
+    const canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+    const context = canvas.getContext("2d");
+    context.font = font;
+    return context.measureText(text).width;
+  }
+
+  // ฟังก์ชันหาคำเพื่อตัดบรรทัด (ใช้ Canvas ตัด)
+  function splitTextToPixels(text, pxLimits) {
+    // กำหนดฟอนต์ให้ตรงกับใน PDF (12pt TH SarabunPSK ≈ 16px บนเว็บ)
+    const fontSpec = '16px "TH SarabunPSK", "Sarabun", sans-serif';
+    let parts = ["", "", ""];
+    let currentText = text || "";
+    
+    for (let i = 0; i < pxLimits.length; i++) {
+        let maxPx = pxLimits[i];
+        let splitIndex = 0;
+        let currentWidth = 0;
+        
+        for (let j = 0; j < currentText.length; j++) {
+            let testStr = currentText.substring(0, j + 1);
+            let w = getTextWidth(testStr, fontSpec);
+            if (w > maxPx) {
+               break; 
+            }
+            splitIndex = j + 1;
+        }
+        parts[i] = currentText.substring(0, splitIndex);
+        currentText = currentText.substring(splitIndex);
+    }
+    return parts;
   }
 
   function applyTemplate() {
@@ -1099,7 +802,9 @@
        document.querySelector('select[name="request_type"]').value = "";
        document.getElementById('empty-msg').classList.remove('hidden');
        document.querySelectorAll('.d-field').forEach(d => d.classList.add('hidden'));
-       document.querySelector('textarea[name="reason_full"]').value = "";
+       document.querySelector('input[name="res_1"]').value = "";
+       document.querySelector('input[name="res_2"]').value = "";
+       document.querySelector('input[name="res_3"]').value = "";
        document.querySelector('input[name="custom_filename"]').value = "";
        return;
     }
@@ -1108,7 +813,13 @@
     const reqSelect = document.querySelector('select[name="request_type"]');
     reqSelect.value = t.topic; 
     toggleFields(t.topic);
-    document.querySelector('textarea[name="reason_full"]').value = t.reason;
+    
+    // แบ่งด้วย Canvas ตาม Pixel Limits ของ 3 บรรทัด (248, 578, 578)
+    const reasonParts = splitTextToPixels(t.reason, [248, 578, 578]);
+    document.querySelector('input[name="res_1"]').value = reasonParts[0];
+    document.querySelector('input[name="res_2"]').value = reasonParts[1];
+    document.querySelector('input[name="res_3"]').value = reasonParts[2];
+    
     document.querySelector('input[name="custom_filename"]').value = t.name + "_" + currentUser.name;
     let targetInputName = "";
     switch (t.topic) {
@@ -1125,7 +836,7 @@
       const input = document.querySelector(`[name="${targetInputName}"]`);
       if (input) { input.value = t.data; input.dispatchEvent(new Event('input')); }
     }
-    document.querySelectorAll('[data-limit]').forEach(el => el.dispatchEvent(new Event('input')));
+    document.querySelectorAll('[data-px-limit], [data-char-limit]').forEach(el => el.dispatchEvent(new Event('input')));
   }
 
   function initData() {
@@ -1136,8 +847,7 @@
       document.getElementById('major_main_dropdown').innerHTML = mOpts;
       document.querySelectorAll('.major-list').forEach(el => el.innerHTML = mOpts);
       globalTemplates = d.templates || [];
-      const tempOpts = '<option value="">-- ไม่ใช้ Template (กรอกเอง) --</option>' + 
-                       globalTemplates.map((t, index) => `<option value="${index}">${t.name}</option>`).join('');
+      const tempOpts = '<option value="">-- ไม่ใช้ Template (กรอกเอง) --</option>' + globalTemplates.map((t, index) => `<option value="${index}">${t.name}</option>`).join('');
       document.getElementById('template_select').innerHTML = tempOpts;
     }).getTemplateData();
   }
@@ -1160,31 +870,16 @@
   function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); document.getElementById('signature_data').value = ""; }
   function saveSig() { document.getElementById('signature_data').value = canvas.toDataURL('image/png'); }
 
-  // 🔥 MODIFIED: Helper function to calculate weighted length 🔥
-  function getStrWidth(text) {
-     if(!text) return 0;
-     let total = 0;
-     for (let char of String(text)) {
-        let w = 1.0;
-        let c = char;
-        let code = c.charCodeAt(0);
-        if ((code >= 0x0E31 && code <= 0x0E3A) || (code >= 0x0E47 && code <= 0x0E4E)) w = 0;
-        else if (["ณ", "ญ", "ฌ", "ฒ", "ฑ", "ฤ", "ฦ", "W", "M", "m", "w"].includes(c)) w = 2.0; // 🔥 Updated Weight
-        else if (["เ", "แ", "ไ", "ใ", "โ", "า", "i", "l", "I", "1", "j", "f", "|", ".", ","].includes(c)) w = 0.7; // 🔥 Updated Weight
-        total += w;
-     }
-     return total;
-  }
-  
-  // 🔥 MODIFIED: Input Constraint Logic to use Weights 🔥
-// ไฟล์ index.html ส่วน <script> ด้านล่าง
 
+  // --- ระบบเช็ค Input Constraint ใหม่ (ใช้ Canvas ล้วนๆ) ---
   function initInputConstraints() {
-    document.querySelectorAll('[data-limit]').forEach(input => {
+    
+    // 1. แบบนับตัวอักษรธรรมดา (ใช้กับเบอร์โทร, รหัสนักศึกษา)
+    document.querySelectorAll('[data-char-limit]').forEach(input => {
       const parent = input.parentNode;
       const existing = parent.querySelector('.char-count');
       if(existing) existing.remove();
-      const limit = parseInt(input.getAttribute('data-limit'));
+      const limit = parseInt(input.getAttribute('data-char-limit'));
       const counterEl = document.createElement('div');
       counterEl.className = 'char-count';
       counterEl.innerText = `0 / ${limit}`;
@@ -1192,46 +887,52 @@
       
       const update = () => {
          let val = input.value;
-         const isNumber = input.getAttribute('data-type') === 'number'; // ✅ เช็คว่าเป็นช่องตัวเลขไหม
-
-         // ถ้าเป็นช่องตัวเลข ให้ลบตัวอักษรอื่นออกให้หมด
-         if (isNumber) val = val.replace(/\D/g, '');
-         
-         // Loop check weight
-         let currentW = 0;
-         let validStr = "";
-         
-         for(let char of val) {
-             let w = 1.0;
-             
-             if (isNumber) {
-                 w = 1.0; // ✅ ถ้าเป็นตัวเลข ให้บังคับนับเป็น 1 เสมอ (ไม่สนว่าเลข 1 จะผอมหรือไม่)
-             } else {
-                 // ถ้าเป็นข้อความปกติ ใช้วิธีนับแบบเดิม (Weight)
-                 let code = char.charCodeAt(0);
-                 if ((code >= 0x0E31 && code <= 0x0E3A) || (code >= 0x0E47 && code <= 0x0E4E)) w = 0;
-                 else if (["ณ", "ญ", "ฌ", "ฒ", "ฑ", "ฤ", "ฦ", "W", "M", "m", "w"].includes(char)) w = 2.0;
-                 else if (["เ", "แ", "ไ", "ใ", "โ", "า", "i", "l", "I", "1", "j", "f", "|", ".", ","].includes(char)) w = 0.7;
-             }
-             
-             if(currentW + w > limit) break; // เกินลิมิตให้หยุด
-             validStr += char;
-             currentW += w;
-         }
-         
-         if(validStr !== val) input.value = validStr; // ตัดส่วนเกินออกใน Input
-         
-         // แสดงผลตัวนับ
-         const displayW = Math.floor(currentW); 
-         counterEl.innerText = `${displayW} / ${limit}`;
-         counterEl.classList.toggle('limit-reached', currentW >= limit);
+         if (input.getAttribute('data-type') === 'number') val = val.replace(/\D/g, '');
+         if (val.length > limit) val = val.substring(0, limit);
+         input.value = val;
+         counterEl.innerText = `${val.length} / ${limit}`;
+         counterEl.classList.toggle('limit-reached', val.length >= limit);
       };
-      
       input.addEventListener('input', update);
       if(input.value) update();
     });
+
+    // 2. แบบวัด Pixel (ใช้ Canvas) สำหรับช่องที่ต้องระวังล้นบรรทัด
+    document.querySelectorAll('[data-px-limit]').forEach(input => {
+      const parent = input.parentNode;
+      const existing = parent.querySelector('.char-count');
+      if(existing) existing.remove();
+      
+      const maxPx = parseInt(input.getAttribute('data-px-limit'));
+      const counterEl = document.createElement('div');
+      counterEl.className = 'char-count';
+      counterEl.innerText = `0%`;
+      input.insertAdjacentElement('afterend', counterEl);
+      
+      const update = () => {
+         let val = input.value;
+         const fontSpec = '16px "TH SarabunPSK", "Sarabun", sans-serif';
+         
+         let currentW = getTextWidth(val, fontSpec);
+         
+         // ถ้ากว้างเกิน Limit ให้ตัดตัวอักษรท้ายสุดทิ้งไปเรื่อยๆ จนกว่าจะพอดี
+         while (currentW > maxPx && val.length > 0) {
+             val = val.slice(0, -1);
+             input.value = val;
+             currentW = getTextWidth(val, fontSpec);
+         }
+         
+         let percent = Math.floor((currentW / maxPx) * 100);
+         counterEl.innerText = `${percent}% (เต็มบรรทัด)`;
+         counterEl.classList.toggle('limit-reached', percent >= 98);
+         counterEl.style.color = percent >= 98 ? '#dc3545' : '#999';
+      };
+      
+      input.addEventListener('input', update);
+      input.addEventListener('paste', () => setTimeout(update, 10)); // กันตอน Copy วาง
+      if(input.value) update();
+    });
     
-    // ...ส่วนตั้งค่าปี พ.ศ. ด้านล่างคงเดิม...
     const ys = document.querySelectorAll('.year-list');
     let opts = '<option value="">-- เลือกปี --</option>';
     for(let y=2560; y<=2570; y++) opts += `<option value="${y}">${y}</option>`;
@@ -1244,7 +945,6 @@
 
     const formContainer = document.getElementById('mainFormContainer');
     formContainer.scrollIntoView({ behavior: 'smooth' });
-    
     formContainer.classList.add('view-mode-active');
     
     let exitContainer = document.getElementById('exit-view-container');
@@ -1254,59 +954,35 @@
         exitContainer.className = 'alert alert-warning shadow-sm mb-3 d-flex justify-content-between align-items-center';
         document.getElementById('mainForm').before(exitContainer);
     }
-    
-    exitContainer.innerHTML = `
-        <div>
-            <i class="bi bi-eye-fill fs-5 me-2"></i> 
-            กำลังดูข้อมูล: <strong>${data.name}</strong> (${TOPIC_MAP[data.type] || data.type})
-        </div>
-        <button class="btn btn-sm btn-dark px-3" onclick="exitViewMode()">ปิดโหมดดูข้อมูล</button>
-    `;
+    exitContainer.innerHTML = `<div><i class="bi bi-eye-fill fs-5 me-2"></i> กำลังดูข้อมูล: <strong>${data.name}</strong> (${TOPIC_MAP[data.type] || data.type})</div><button class="btn btn-sm btn-dark px-3" onclick="exitViewMode()">ปิดโหมดดูข้อมูล</button>`;
 
     setVal('custom_filename', data.custom_filename || '');
-    setVal('program', data.program);
-    setVal('year', data.year);
-    setVal('tel', data.tel);
-    setVal('major', data.major);
-    setVal('advisor', data.advisor);
-    setVal('email', data.email);
-    setVal('address', data.address);
-    setVal('request_type', data.type); 
-    
+    setVal('program', data.program); setVal('year', data.year); setVal('tel', data.tel);
+    setVal('major', data.major); setVal('advisor', data.advisor); setVal('email', data.email);
+    setVal('address', data.address); setVal('request_type', data.type); 
     toggleFields(data.type);
 
-    setVal('major_sel', data.major_sel);
-    setVal('major_from', data.major_from);
-    setVal('major_to', data.major_to);
-    setVal('prof_rec', data.prof_rec);
-    setVal('r_no', data.r_no);
-    setVal('reg_sem', data.reg_sem);
-    setVal('reg_year', data.reg_year);
-    setVal('reg_reasson', data.reg_reasson);
-    setVal('re_ad', data.re_ad);
-    setVal('re_ad_year', data.re_ad_year);
-    setVal('location', data.location);
-    setVal('items', data.items);
-    setVal('other', data.other);
-    setVal('reason_full', data.reason_full || data.reason);
+    setVal('major_sel', data.major_sel); setVal('major_from', data.major_from); setVal('major_to', data.major_to);
+    setVal('prof_rec', data.prof_rec); setVal('r_no', data.r_no); setVal('reg_sem', data.reg_sem);
+    setVal('reg_year', data.reg_year); setVal('reg_reasson', data.reg_reasson); setVal('re_ad', data.re_ad);
+    setVal('re_ad_year', data.re_ad_year); setVal('location', data.location); setVal('items', data.items); setVal('other', data.other);
+    
+    setVal('res_1', data.res_1 || '');
+    setVal('res_2', data.res_2 || '');
+    setVal('res_3', data.res_3 || '');
 
     const form = document.getElementById('mainForm');
     form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => {
-        el.disabled = true;
-        if(el.type === 'submit') el.classList.add('hidden');
+        el.disabled = true; if(el.type === 'submit') el.classList.add('hidden');
     });
 
     const canvas = document.getElementById('sig-canvas');
-    canvas.style.pointerEvents = 'none';
-    canvas.style.opacity = '0.5';
+    canvas.style.pointerEvents = 'none'; canvas.style.opacity = '0.5';
   }
 
   function setVal(name, val) {
      const el = document.querySelector(`[name="${name}"]`);
-     if(el && val !== undefined && val !== null) {
-        el.value = val;
-        el.dispatchEvent(new Event('input'));
-     }
+     if(el && val !== undefined && val !== null) { el.value = val; el.dispatchEvent(new Event('input')); }
   }
 
   function exitViewMode() {
@@ -1317,21 +993,18 @@
       const form = document.getElementById('mainForm');
       form.reset();
       form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => {
-          el.disabled = false;
-          if(el.type === 'submit') el.classList.remove('hidden');
+          el.disabled = false; if(el.type === 'submit') el.classList.remove('hidden');
       });
 
       const canvas = document.getElementById('sig-canvas');
-      canvas.style.pointerEvents = 'auto';
-      canvas.style.opacity = '1';
-      clearSig();
-      toggleFields('');
+      canvas.style.pointerEvents = 'auto'; canvas.style.opacity = '1'; clearSig(); toggleFields('');
 
       if(currentUser) {
         document.getElementById('main_year').value = currentUser.year || '';
         document.getElementById('main_tel').value = currentUser.tel || '';
         document.getElementById('main_email').value = currentUser.email || '';
       }
+      document.querySelectorAll('[data-px-limit], [data-char-limit]').forEach(el => el.dispatchEvent(new Event('input')));
   }
 </script>
 </body>
